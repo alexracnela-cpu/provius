@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Provius · Gestão de Projetos</title>
+<link rel="icon" type="image/png" href="assets/icone.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="assets/estilo.css?v=1">
+<script>try{var t=localStorage.getItem('provius-tema');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body>
+<div id="fundo" aria-hidden="true"></div>
+
+<!-- ============ ENTRAR ============ -->
+<section id="tela-login" class="acesso" hidden>
+  <form class="acesso-cx" id="f-login" novalidate>
+    <img class="lg-claro" src="assets/logo-provius.png" alt="Provius · Gestão de Projetos">
+    <img class="lg-escuro" src="assets/logo-provius-branco.png" alt="Provius · Gestão de Projetos">
+    <div class="campo"><label class="r" for="l-email">Email</label><input type="text" id="l-email" inputmode="email" autocomplete="username"></div>
+    <div class="campo"><label class="r" for="l-senha">Senha</label><input type="password" id="l-senha" autocomplete="current-password"></div>
+    <span class="erro-msg" id="l-erro" hidden></span>
+    <button type="submit" class="btn pri">Entrar</button>
+    <button type="button" class="link-pdf" id="l-esqueci" style="align-self:center">Esqueci a senha</button>
+  </form>
+</section>
+
+<!-- ============ CRIAR / TROCAR SENHA ============ -->
+<section id="tela-senha" class="acesso" hidden>
+  <form class="acesso-cx" id="f-senha" novalidate>
+    <img class="lg-claro" src="assets/logo-provius.png" alt="Provius">
+    <img class="lg-escuro" src="assets/logo-provius-branco.png" alt="Provius">
+    <b style="font-size:17px" id="s-tit">Bem-vindo(a) ao Provius</b>
+    <span class="ajuda" id="s-quem"></span>
+    <div class="campo"><label class="r" for="s1">Crie sua senha</label><input type="password" id="s1" autocomplete="new-password"></div>
+    <ul class="regras" id="s-regras"><li data-r="len">Pelo menos 8 caracteres</li><li data-r="let">Uma letra</li><li data-r="num">Um número</li><li data-r="eq">As duas senhas iguais</li></ul>
+    <div class="campo"><label class="r" for="s2">Repita a senha</label><input type="password" id="s2" autocomplete="new-password"></div>
+    <span class="erro-msg" id="s-erro" hidden></span>
+    <button type="submit" class="btn pri" id="s-ok" disabled>Criar senha e entrar</button>
+  </form>
+</section>
+
+<!-- ============ SEM CONFIGURAÇÃO / AVISO ============ -->
+<section id="tela-aviso" class="acesso" hidden>
+  <div class="acesso-cx"><img class="lg-claro" src="assets/logo-provius.png" alt="Provius"><img class="lg-escuro" src="assets/logo-provius-branco.png" alt="Provius"><p id="aviso-txt"></p><button type="button" class="btn" id="aviso-sair" hidden>Voltar para a entrada</button></div>
+</section>
+
+<!-- ============ APP ============ -->
+<div id="app" hidden>
+<header class="topo">
+  <div class="topo-in">
+    <div class="marca"><img class="lg-claro" src="assets/logo-provius.png" alt="Provius · Gestão de Projetos"><img class="lg-escuro" src="assets/logo-provius-branco.png" alt="Provius · Gestão de Projetos"></div>
+    <div class="abas" role="tablist" id="abas">
+      <button class="aba" role="tab" data-tela="todos">Todos</button>
+      <button class="aba" role="tab" data-tela="pedido" data-setor="Engenharia">1 · Pedido</button>
+      <button class="aba" role="tab" data-tela="projetos" data-setor="Projetos">2 · Projetos</button>
+      <button class="aba" role="tab" data-tela="exe" data-setor="Engenharia">3 · Execução</button>
+      <button class="aba" role="tab" data-tela="cad" data-setor="Cadastro">4 · Cadastro</button>
+      <button class="aba" role="tab" data-tela="asb" data-setor="Projetos">5 · As built e AGEMAN</button>
+      <button class="aba" role="tab" data-tela="usuarios" data-admin="1">⚙ Usuários</button>
+    </div>
+    <div class="usuario"><span id="u-eu"></span><button type="button" class="tema" id="tema" aria-label="Mudar tema"></button><button type="button" class="btn peq" id="sair">Sair</button></div>
+  </div>
+</header>
+
+<!-- ===== TODOS ===== -->
+<main class="pagina sem-lado" id="tela-todos" hidden>
+  <div style="min-width:0">
+    <div class="cab"><div><div class="etapa">Visão geral</div><h1>Todos os projetos</h1><p class="sub">Onde cada processo está agora. Clique numa etapa para filtrar, ou num projeto para ver o caminho dele.</p></div>
+      <button type="button" class="btn" id="recarregar">↻ Atualizar</button></div>
+    <div class="esteira" id="esteira"></div>
+    <div class="barra-tot">
+      <div class="vis" role="group" aria-label="Forma de ver"><button type="button" id="v-lista" aria-pressed="true">Lista</button><button type="button" id="v-quadro" aria-pressed="false">Quadro por setor</button></div>
+      <span class="ajuda" id="t-resumo"></span>
+      <span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-left:auto">
+        <label class="ajuda" for="f-ordem" style="display:flex;gap:6px;align-items:center;font-weight:600">Organizar por<select id="f-ordem" style="width:auto;padding:6px 8px"><option value="setor" selected>Setor</option><option value="recente">Mais recentes</option><option value="pontos">Mais pontos</option></select></label>
+        <button type="button" class="btn" id="btn-rel">🖨 Relatório</button>
+      </span>
+    </div>
+    <div id="vista-quadro" hidden><div class="quadro-wrap"><div class="quadro" id="quadro"></div></div></div>
+    <div id="vista-lista">
+      <div class="filtros">
+        <label class="busca">Buscar<input type="text" id="f-busca" placeholder="nº, logradouro ou bairro"></label>
+        <label>Ano<select id="f-ano"></select></label>
+        <label>Tipo<select id="f-tipo"><option value="*">Todos</option><option value="">Comum</option><option value="C">Campo / Quadra (C-)</option><option value="R">Reequilíbrio (R-)</option><option value="RM">Remodelamento (RM-)</option><option value="V">Locais violentos (V-)</option><option value="MP">Manutenção preventiva (MP-)</option></select></label>
+        <label>Etapa<select id="f-etapa"></select></label>
+        <label>Zona<select id="f-zona"><option value="*">Todas</option><option>NORTE</option><option>SUL</option><option>LESTE</option><option>OESTE</option><option>CENTRO-SUL</option><option>CENTRO-OESTE</option><option>RURAL</option></select></label>
+      </div>
+      <div class="cards-lista" id="lista"></div>
+      <div class="pag"><span id="pag-info"></span><span style="display:flex;gap:8px"><button type="button" class="btn peq" id="pag-ant">← Anterior</button><button type="button" class="btn peq" id="pag-prox">Próxima →</button></span></div>
+    </div>
+  </div>
+</main>
+
+<!-- ===== 1 · PEDIDO ===== -->
+<main class="pagina sem-lado" id="tela-pedido" hidden>
+  <div style="min-width:0;max-width:980px">
+    <div class="cab"><div><div class="etapa">Engenharia · Etapa 1</div><h1>Novo processo</h1><p class="sub">Dados do pedido e o croqui. Ao salvar, o processo vai direto para a fila de Projetos.</p></div>
+      <div class="numbox"><span>Próximo número</span><div class="numero" id="num-prev">—</div></div></div>
+    <form id="f-ped" novalidate>
+      <section class="secao"><h2>Tipo de projeto</h2><div style="padding:16px"><div class="tipos">
+        <label class="opcao"><input type="radio" name="tipo" value="" checked><span><b>Comum</b><small id="px-">—</small></span></label>
+        <label class="opcao"><input type="radio" name="tipo" value="C"><span><b>Campo / Quadra</b><small id="px-C">—</small></span></label>
+        <label class="opcao"><input type="radio" name="tipo" value="R"><span><b>Reequilíbrio</b><small id="px-R">—</small></span></label>
+      </div></div></section>
+      <section class="secao"><h2>Pedido</h2><div class="grade">
+        <div class="campo"><label class="r" for="p-origem">Origem do pedido <em>*</em></label><select id="p-origem"><option value="">Selecione</option><option>Encaminhamento (ENC.)</option><option>Ofício</option><option>Email</option><option>WhatsApp</option><option>Outro</option></select></div>
+        <div class="campo"><label class="r" for="p-ref">Nº do encaminhamento / ofício</label><input type="text" id="p-ref" placeholder="ex.: ENC. 217/2026"></div>
+        <div class="campo"><label class="r" for="p-data">Data do pedido</label><input type="date" id="p-data"></div>
+        <div class="campo"><label class="r" for="p-solic">Solicitante</label><input type="text" id="p-solic" placeholder="órgão, secretaria, morador"></div>
+        <div class="campo largo"><span class="r">PDF do pedido</span>
+          <div class="upload" id="p-up-ped"><span class="pdf-ico">PDF</span><span class="nome">Ofício, encaminhamento ou print do WhatsApp/email salvo em PDF. Até 10 MB.</span><label class="btn peq" for="p-arq-ped">Escolher PDF</label><input type="file" id="p-arq-ped" accept="application/pdf,.pdf" hidden></div></div>
+      </div></section>
+      <section class="secao"><h2>Local</h2><div class="grade">
+        <div class="campo largo"><label class="r" for="p-logr">Logradouro <em>*</em></label><input type="text" id="p-logr"></div>
+        <div class="campo"><label class="r" for="p-tlogr">Tipo de logradouro</label><select id="p-tlogr"><option value="">Selecione</option><option>VIA</option><option>CAMPO/QUADRA</option><option>PRAÇA</option><option>PARQUE</option><option>CEMITÉRIO</option></select></div>
+        <div class="campo"><label class="r" for="p-bairro">Bairro <em>*</em></label><select id="p-bairro"></select></div>
+        <div class="campo"><span class="r">Zona</span><div class="zona" id="p-zona">escolha o bairro</div></div>
+        <div class="campo"><label class="r" for="p-refer">Ponto de referência</label><input type="text" id="p-refer"></div>
+      </div></section>
+      <section class="secao"><h2>Croqui</h2><div class="grade">
+        <div class="campo largo"><span class="r">Croqui em PDF <em>*</em></span>
+          <div class="upload" id="p-up-croqui"><span class="pdf-ico">PDF</span><span class="nome">Nenhum arquivo. Só PDF, até 10 MB.</span><label class="btn peq" for="p-arq-croqui">Escolher PDF</label><input type="file" id="p-arq-croqui" accept="application/pdf,.pdf" hidden></div></div>
+        <div class="campo"><span class="r">Já executado?</span><div class="seg"><label><input type="radio" name="p-exec" value="nao" checked>Não</label><label><input type="radio" name="p-exec" value="sim">Sim</label></div><span class="ajuda">Se sim, o processo pula a etapa de execução.</span></div>
+        <div class="campo largo"><label class="r" for="p-obs">Observações</label><textarea id="p-obs" placeholder="algo que Projetos precise saber"></textarea></div>
+      </div></section>
+      <div class="acoes"><button type="submit" class="btn pri" id="p-ok">Cadastrar e entregar para Projetos →</button></div>
+    </form>
+  </div>
+</main>
+
+<!-- ===== 2 · PROJETOS ===== -->
+<main class="pagina" id="tela-projetos" hidden>
+  <div style="min-width:0">
+    <div id="j-form" hidden>
+      <div class="cab"><div><div class="etapa">Setor de Projetos · Etapa 2 · Elaborar projeto</div><h1 id="j-tit"></h1><p class="sub" id="j-sub"></p></div><button type="button" class="btn" id="j-croqui">📄 Ver croqui</button></div>
+      <div class="faixa-dev" id="j-dev" hidden></div>
+      <section class="secao"><h2>Dados do cadastro <span style="text-transform:none;letter-spacing:0;font-family:var(--f-corpo);font-size:13px">editável · alterações ficam no histórico</span></h2>
+        <div class="grade">
+          <div class="campo"><span class="r">Tipo e número</span><div class="zona on" id="j-num"></div></div>
+          <div class="campo"><label class="r" for="j-serv">Tipo de serviço <em>*</em></label><select id="j-serv"><option value="">Selecione</option><option>EXPANSÃO</option><option>MODERNIZAÇÃO</option><option>ILUMINAÇÃO DE DESTAQUE</option><option>DEMANDA REPRIMIDA</option><option>REEQUILÍBRIO</option><option>REMODELAMENTO</option><option>MANUTENÇÃO</option></select></div>
+          <div class="campo"><label class="r" for="j-origem">Origem</label><select id="j-origem"><option value="">—</option><option>Encaminhamento (ENC.)</option><option>Ofício</option><option>Email</option><option>WhatsApp</option><option>Outro</option></select></div>
+          <div class="campo"><label class="r" for="j-ref">Encaminhamento / ofício</label><input type="text" id="j-ref"></div>
+          <div class="campo largo"><label class="r" for="j-logr">Logradouro</label><input type="text" id="j-logr"></div>
+          <div class="campo"><label class="r" for="j-bairro">Bairro</label><select id="j-bairro"></select></div>
+          <div class="campo"><span class="r">Zona</span><div class="zona on" id="j-zona"></div></div>
+          <div class="campo"><span class="r">Já executado?</span><div class="seg"><label><input type="radio" name="j-exec" value="nao">Não</label><label><input type="radio" name="j-exec" value="sim">Sim</label></div></div>
+          <div class="campo largo" id="j-obsped-c" hidden><span class="r">Observação da Engenharia</span><div class="zona on" id="j-obsped"></div></div>
+        </div></section>
+      <section class="secao"><h2>Potência aplicada</h2>
+        <div class="tab-wrap" style="padding-top:10px"><table><thead><tr><th>Potência</th><th class="num">Quantidade</th><th></th></tr></thead><tbody id="j-pot"></tbody></table></div>
+        <div class="total"><button type="button" class="btn peq" id="j-addpot">+ Adicionar potência</button><div style="display:flex;align-items:baseline;gap:8px"><span class="ajuda">Total de pontos</span><span class="numero" id="j-tot">0</span></div></div>
+      </section>
+      <section class="secao"><h2>Pontos por modalidade</h2>
+        <div class="mods">
+          <div class="campo"><label class="r" for="j-cv">Crescimento vegetativo</label><input type="number" min="0" id="j-cv" class="j-mod"></div>
+          <div class="campo"><label class="r" for="j-mo">Modernização</label><input type="number" min="0" id="j-mo" class="j-mod"></div>
+          <div class="campo"><label class="r" for="j-de">Iluminação de destaque</label><input type="number" min="0" id="j-de" class="j-mod"></div>
+        </div><div class="conf" id="j-conf"></div></section>
+      <section class="secao"><h2>Entrega do projeto</h2><div class="grade">
+        <div class="campo largo"><span class="r">Projeto em PDF <em>*</em></span>
+          <div class="upload" id="j-up"><span class="pdf-ico">PDF</span><span class="nome">Nenhum arquivo. Só PDF, até 10 MB.</span><label class="btn peq" for="j-arq">Escolher PDF</label><input type="file" id="j-arq" accept="application/pdf,.pdf" hidden></div>
+          <span class="ajuda" id="j-arq-info"></span></div>
+        <div class="campo largo"><label class="r" for="j-obs">Observações para a Engenharia</label><textarea id="j-obs"></textarea></div>
+      </div></section>
+      <div class="acoes">
+        <button type="button" class="btn canc" id="j-canc">Cancelar processo</button>
+        <button type="button" class="btn" id="j-salvar">Salvar</button>
+        <button type="button" class="btn pri" id="j-ok">Entregar para Engenharia →</button>
+      </div>
+    </div>
+    <div id="j-vazio" hidden><div class="cab"><div><div class="etapa">Setor de Projetos</div><h1>Nada para elaborar</h1><p class="sub">Quando a Engenharia cadastrar um pedido, ele aparece aqui.</p></div></div></div>
+  </div>
+  <aside class="lado"><div class="caixa"><h3>Aguardando você</h3><div class="fila" id="j-fila"></div></div></aside>
+</main>
+
+<!-- ===== 3 · EXECUÇÃO ===== -->
+<main class="pagina" id="tela-exe" hidden>
+  <div style="min-width:0">
+    <div id="x-form" hidden>
+      <div class="cab"><div><div class="etapa">Engenharia · Etapa 3 · Execução</div><h1 id="x-tit"></h1><p class="sub" id="x-sub"></p></div><button type="button" class="btn" id="x-ver">📄 Ver projeto</button></div>
+      <div class="faixa-dev" id="x-dev-faixa" hidden></div>
+      <section class="secao"><h2>Projeto para executar</h2><div class="resumo" id="x-resumo"></div>
+        <div class="correcao" style="background:var(--azul-bg)" id="x-obs-box" hidden><b style="color:var(--azul)">Observação de Projetos:</b> <span id="x-obs"></span></div></section>
+      <section class="secao"><h2>Execução</h2><div class="grade">
+        <div class="campo largo"><span class="r">Situação <em>*</em></span><div class="seg"><label><input type="radio" name="x-sit" value="executado">Executado</label><label><input type="radio" name="x-sit" value="parcial">Parcial</label><label><input type="radio" name="x-sit" value="nao" checked>Ainda não</label></div></div>
+        <div class="campo"><label class="r" for="x-data">Data da execução <em>*</em></label><input type="date" id="x-data"></div>
+        <div class="campo"><label class="r" for="x-equipe">Equipe / encarregado</label><input type="text" id="x-equipe"></div>
+        <div class="campo largo" id="x-parc-c" hidden><label class="r" for="x-parc">O que ficou faltando <em>*</em></label><textarea id="x-parc"></textarea><span class="ajuda">Com execução parcial o processo continua na sua fila.</span></div>
+      </div></section>
+      <section class="secao"><h2>Correções de campo</h2><div class="grade">
+        <div class="campo largo"><span class="r">A execução ficou diferente do projeto?</span><div class="seg"><label><input type="radio" name="x-cor" value="nao" checked>Não, igual ao projeto</label><label><input type="radio" name="x-cor" value="sim">Sim, houve correções</label></div></div>
+        <div class="campo largo" id="x-cor-c" hidden><label class="r" for="x-cor-txt">Descreva as correções <em>*</em></label><textarea id="x-cor-txt"></textarea>
+          <span class="r" style="margin-top:8px">Projeto rabiscado ou fotos do campo</span>
+          <div class="upload" id="x-up"><span class="pdf-ico">PDF</span><span class="nome">PDF com as marcações ou fotos (JPG/PNG). Pode escolher vários.</span><label class="btn peq" for="x-arq">Escolher arquivos</label><input type="file" id="x-arq" accept="application/pdf,.pdf,image/jpeg,image/png" multiple hidden></div>
+          <div class="arqs" id="x-arqs"></div></div>
+      </div></section>
+      <div class="acoes"><button type="button" class="btn dev" id="x-dev">↩ Devolver para Projetos</button><button type="button" class="btn" id="x-salvar">Salvar</button><button type="button" class="btn pri" id="x-ok">Entregar para Cadastro →</button></div>
+    </div>
+    <div id="x-vazio" hidden><div class="cab"><div><div class="etapa">Engenharia · Execução</div><h1>Nada para executar</h1><p class="sub">Quando Projetos entregar um projeto, ele aparece aqui.</p></div></div></div>
+  </div>
+  <aside class="lado"><div class="caixa"><h3>Aguardando execução</h3><div class="fila" id="x-fila"></div></div></aside>
+</main>
+
+<!-- ===== 4 · CADASTRO ===== -->
+<main class="pagina" id="tela-cad" hidden>
+  <div style="min-width:0">
+    <div id="k-form" hidden>
+      <div class="cab"><div><div class="etapa">Setor de Cadastro · Etapa 4 · Emplaquetamento</div><h1 id="k-tit"></h1><p class="sub" id="k-sub"></p></div></div>
+      <div class="faixa-dev" id="k-dev-faixa" hidden></div>
+      <section class="secao"><h2>O que chegou da Engenharia</h2><div class="resumo" id="k-resumo"></div>
+        <div class="correcao"><b>Correções da Engenharia:</b> <span id="k-corr"></span></div></section>
+      <section class="secao"><h2>Plaquetas
+        <span class="vis" role="group" style="text-transform:none;letter-spacing:0"><button type="button" id="km-ed" aria-pressed="true">Marcar no PDF aqui</button><button type="button" id="km-up" aria-pressed="false">Baixar e enviar PDF</button></span></h2>
+        <div id="k-editor">
+          <div class="ed-barra"><span class="ajuda">Clique no poste e digite a plaqueta. Arraste o número para tirá-lo de cima do desenho: o ponto vermelho (âncora) não sai do lugar. Ctrl + roda do mouse dá zoom.</span>
+            <span class="ed-ctl"><span class="contador" id="ed-cont">0 plaquetas</span><button type="button" class="btn peq" id="ed-menos" aria-label="Diminuir zoom">−</button><span class="ajuda" id="ed-zinfo" style="min-width:42px;text-align:center">100%</span><button type="button" class="btn peq" id="ed-mais" aria-label="Aumentar zoom">+</button><button type="button" class="btn peq" id="ed-ajusta">Ajustar</button>
+              <span id="ed-pags" hidden><button type="button" class="btn peq" id="ed-pant">‹</button> <span id="ed-pinfo"></span> <button type="button" class="btn peq" id="ed-ppro">›</button></span></span></div>
+          <div class="ed-area" id="ed-area"><div class="ed-pag" id="ed-pag"><canvas id="ed-cv"></canvas><div class="ed-marcas" id="ed-marcas"></div>
+            <div class="ed-pop" id="ed-pop" hidden><input type="text" id="ed-num" inputmode="numeric" placeholder="nº da plaqueta" aria-label="Número da plaqueta"><button type="button" class="btn peq pri" id="ed-okp">OK</button><button type="button" class="btn peq" id="ed-del" hidden>Remover</button><button type="button" class="btn peq" id="ed-x" aria-label="Fechar">×</button></div></div></div>
+          <div class="ed-rodape"><span class="ajuda" id="ed-fonte"></span><span style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn peq" id="ed-ver" hidden>Ver PDF gerado</button><button type="button" class="btn pri" id="ed-gerar">Gerar PDF com plaquetas</button></span></div>
+        </div>
+        <ol class="passos-k" id="k-modo-up" hidden>
+          <li><b>1. Baixe o projeto com as correções</b><span style="display:flex;gap:8px;flex-wrap:wrap" id="k-baixar"></span></li>
+          <li><b>2. Coloque as plaquetas no PDF</b><span class="ajuda">No AutoCAD ou num editor de PDF.</span></li>
+          <li><b>3. Envie o PDF com as plaquetas <em class="obr">*</em></b>
+            <div class="upload" id="k-up"><span class="pdf-ico">PDF</span><span class="nome">Nenhum arquivo. Só PDF, até 10 MB.</span><label class="btn peq" for="k-arq">Escolher PDF</label><input type="file" id="k-arq" accept="application/pdf,.pdf" hidden></div></li>
+        </ol>
+      </section>
+      <section class="secao"><h2>Registro</h2><div class="grade">
+        <div class="campo largo"><span class="r">Quem envia</span><div class="zona on" id="k-reg"></div></div>
+        <div class="campo largo"><label class="r" for="k-obs">Observações para Projetos</label><textarea id="k-obs"></textarea></div>
+      </div></section>
+      <div class="acoes"><button type="button" class="btn dev" id="k-dev">↩ Devolver</button><button type="button" class="btn" id="k-salvar">Salvar</button><button type="button" class="btn pri" id="k-ok">Entregar para Projetos →</button></div>
+    </div>
+    <div id="k-vazio" hidden><div class="cab"><div><div class="etapa">Setor de Cadastro</div><h1>Nada para emplaquetar</h1><p class="sub">Quando a Engenharia entregar uma execução, ela aparece aqui.</p></div></div></div>
+  </div>
+  <aside class="lado"><div class="caixa"><h3>Aguardando você</h3><div class="fila" id="k-fila"></div></div></aside>
+</main>
+
+<!-- ===== 5 · AS BUILT E AGEMAN ===== -->
+<main class="pagina" id="tela-asb" hidden>
+  <div style="min-width:0">
+    <div id="a-form" hidden>
+      <div class="cab"><div><div class="etapa">Setor de Projetos · Etapa 5 · As built</div><h1 id="a-tit"></h1><p class="sub">Voltou do Cadastro com as plaquetas</p></div></div>
+      <div class="faixa-dev" id="a-dev-faixa" hidden></div>
+      <section class="secao"><h2>O que chegou do Cadastro</h2><div class="resumo" id="a-resumo"></div>
+        <div class="correcao" style="background:var(--azul-bg)" id="a-obs-box" hidden><b style="color:var(--azul)">Observação do Cadastro:</b> <span id="a-obs-cad"></span></div></section>
+      <section class="secao"><h2>As Built com plaqueta</h2>
+        <div class="ed-barra"><span class="ajuda" id="v-fonte"></span><span class="ed-ctl"><button type="button" class="btn peq" id="v-menos">−</button><span class="ajuda" id="v-z" style="min-width:42px;text-align:center">100%</span><button type="button" class="btn peq" id="v-mais">+</button><button type="button" class="btn peq" id="v-ajusta">Ajustar</button><button type="button" class="btn peq" id="v-cheia">⤢ Tela cheia</button><button type="button" class="btn peq pri" id="v-print">🖨 Imprimir</button></span></div>
+        <div class="ed-area" id="v-area" style="max-height:640px"><div class="ed-pag" style="cursor:default"><canvas id="v-cv"></canvas></div></div>
+      </section>
+      <section class="secao"><h2>Histórico do processo</h2><ul class="hist" id="a-hist"></ul></section>
+      <section class="secao"><h2>As built</h2><div class="grade">
+        <div class="campo largo"><span class="r">PDF do as built atualizado <em>*</em></span>
+          <div class="upload" id="a-up"><span class="pdf-ico">PDF</span><span class="nome">Projeto final com as correções e as plaquetas. Só PDF, até 10 MB.</span><label class="btn peq" for="a-arq">Escolher PDF</label><input type="file" id="a-arq" accept="application/pdf,.pdf" hidden></div></div>
+        <div class="campo"><span class="r">Pontos no as built</span><div class="zona on" id="a-pts"></div></div>
+        <div class="campo largo"><label class="r" for="a-obs">Observações</label><textarea id="a-obs"></textarea></div>
+      </div></section>
+      <div class="acoes"><button type="button" class="btn canc" id="a-canc">Cancelar processo</button><button type="button" class="btn dev" id="a-dev">↩ Devolver</button><button type="button" class="btn" id="a-salvar">Salvar</button><button type="button" class="btn pri" id="a-ok">Concluir as built → pronto p/ AGEMAN</button></div>
+    </div>
+    <div id="a-vazio" hidden><div class="cab"><div><div class="etapa">Setor de Projetos · As built</div><h1>Nenhum as built pendente</h1><p class="sub">Tudo o que voltou do Cadastro já foi atualizado.</p></div></div></div>
+    <section class="secao" style="margin-top:22px">
+      <h2>Prontos para enviar à AGEMAN <span class="contador" id="ag-cont" style="text-transform:none;letter-spacing:0"></span></h2>
+      <div class="ag-tab"><table><thead><tr><th><input type="checkbox" id="ag-todos" aria-label="Selecionar todos"></th><th>Nº</th><th>Logradouro</th><th>Bairro</th><th class="num">Pontos</th><th>As built</th></tr></thead><tbody id="ag-lista"></tbody></table></div>
+      <div class="ag-envio">
+        <div class="campo"><label class="r" for="ag-data">Data do envio <em>*</em></label><input type="date" id="ag-data"></div>
+        <div class="campo"><label class="r" for="ag-of">Nº da carta / ofício</label><input type="text" id="ag-of"></div>
+        <div class="campo largo"><span class="r">Comprovante de envio (opcional)</span>
+          <div class="upload" id="ag-up"><span class="pdf-ico">PDF</span><span class="nome">Ofício protocolado ou email de envio em PDF.</span><label class="btn peq" for="ag-arq">Escolher PDF</label><input type="file" id="ag-arq" accept="application/pdf,.pdf" hidden></div></div>
+        <div class="acoes" style="grid-column:1/-1"><button type="button" class="btn" id="ag-carta">📄 Gerar carta de envio</button><button type="button" class="btn pri" id="ag-enviar">Registrar envio à AGEMAN</button></div>
+      </div>
+    </section>
+  </div>
+  <aside class="lado"><div class="caixa"><h3>Atualizar as built</h3><div class="fila" id="a-fila"></div></div></aside>
+</main>
+
+<!-- ===== USUÁRIOS ===== -->
+<main class="pagina sem-lado" id="tela-usuarios" hidden>
+  <div style="min-width:0">
+    <div class="cab"><div><div class="etapa">Administração · só o administrador vê esta aba</div><h1>Usuários e acessos</h1><p class="sub">A pessoa recebe um convite por email e cria a própria senha no primeiro acesso. O setor define a fila que ela vê.</p></div><button type="button" class="btn pri" id="u-novo">+ Novo usuário</button></div>
+    <section class="secao" id="u-sec" hidden><h2>Novo usuário</h2>
+      <form class="u-form" id="u-form" novalidate>
+        <div class="campo"><label class="r" for="u-nome">Nome <em>*</em></label><input type="text" id="u-nome"></div>
+        <div class="campo"><label class="r" for="u-email">Email <em>*</em></label><input type="text" id="u-email" inputmode="email"></div>
+        <div class="campo"><label class="r" for="u-setor">Setor <em>*</em></label><select id="u-setor"><option value="">Selecione</option><option>Engenharia</option><option>Projetos</option><option>Cadastro</option><option>Gerência</option></select></div>
+        <div class="campo"><span class="r">Validade do convite</span><div class="zona on">24 horas</div></div>
+        <div class="acoes"><button type="button" class="btn" id="u-cancelar">Cancelar</button><button type="submit" class="btn pri" id="u-enviar">✉ Enviar convite</button></div>
+        <span class="erro-msg" id="u-erro" hidden style="grid-column:1/-1"></span>
+      </form></section>
+    <section class="secao"><h2>Pessoas cadastradas <span class="contador" id="u-cont" style="text-transform:none;letter-spacing:0"></span></h2>
+      <div class="u-tab"><table><thead><tr><th>Pessoa</th><th>Setor</th><th>Situação</th><th>Último acesso</th><th></th></tr></thead><tbody id="u-lista"></tbody></table></div></section>
+  </div>
+</main>
+</div>
+
+<!-- ===== JANELAS ===== -->
+<div class="fundo" id="modal-det" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="det-tit" style="width:min(720px,100%)"><h2 id="det-tit"></h2><div class="corpo" id="det-corpo"></div><div class="acoes"><button type="button" class="btn" data-fecha>Fechar</button><button type="button" class="btn pri" id="det-abrir" hidden></button></div></div></div>
+
+<div class="fundo" id="modal-dev" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="dv-tit"><h2 id="dv-tit">Devolver</h2><div class="corpo">
+  <div class="campo" id="dv-para-c"><label class="r" for="dv-para">Devolver para <em>*</em></label><select id="dv-para"></select></div>
+  <div class="campo"><label class="r" for="dv-motivo">Motivo <em>*</em></label><select id="dv-motivo"><option value="">Selecione</option><option>Croqui incompleto</option><option>Medida ou posição divergente</option><option>Local não confere</option><option>Falta informação do pedido</option><option>Execução diferente do projeto</option><option>Faltam correções do campo</option><option>Plaqueta faltando ou errada</option><option>Outro</option></select></div>
+  <div class="campo"><label class="r" for="dv-txt">Explique o que precisa ser corrigido <em>*</em></label><textarea id="dv-txt"></textarea></div>
+  <span class="erro-msg" id="dv-erro" hidden>Escolha o motivo e escreva o que precisa ser corrigido.</span></div>
+  <div class="acoes"><button type="button" class="btn" data-fecha>Cancelar</button><button type="button" class="btn dev" id="dv-ok">Devolver</button></div></div></div>
+
+<div class="fundo" id="modal-canc" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="c-tit"><h2 id="c-tit">Cancelar processo</h2><div class="corpo">
+  <p class="ajuda" style="margin:0;font-size:14px">O processo sai de todas as filas e fica no histórico como CANCELADO. O número não é reaproveitado.</p>
+  <div class="campo"><label class="r" for="c-motivo">Motivo <em>*</em></label><select id="c-motivo"><option value="">Selecione</option><option>Pedido retirado pelo solicitante</option><option>Local já atendido</option><option>Duplicado de outro processo</option><option>Inviável tecnicamente</option><option>Outro</option></select></div>
+  <div class="campo"><label class="r" for="c-txt">Observação <em>*</em></label><textarea id="c-txt"></textarea></div>
+  <span class="erro-msg" id="c-erro" hidden>Escolha o motivo e escreva a observação.</span></div>
+  <div class="acoes"><button type="button" class="btn" data-fecha>Voltar</button><button type="button" class="btn canc-ok" id="c-ok">Cancelar processo</button></div></div></div>
+
+<div class="fundo" id="modal-pdf" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mp-tit" style="width:min(1100px,100%)"><h2 id="mp-tit">PDF</h2>
+  <div class="ed-barra"><span class="ajuda" id="mp-fonte"></span><span class="ed-ctl"><button type="button" class="btn peq" id="mp-menos">−</button><span class="ajuda" id="mp-z" style="min-width:42px;text-align:center">100%</span><button type="button" class="btn peq" id="mp-mais">+</button><span id="mp-pags" hidden><button type="button" class="btn peq" id="mp-pant">‹</button> <span id="mp-pinfo"></span> <button type="button" class="btn peq" id="mp-ppro">›</button></span><button type="button" class="btn peq" id="mp-baixar">⬇ Baixar</button><button type="button" class="btn peq pri" id="mp-print">🖨 Imprimir</button></span></div>
+  <div class="ed-area" id="mp-area" style="max-height:70vh"><div class="ed-pag" style="cursor:default"><canvas id="mp-cv"></canvas></div></div>
+  <div class="acoes" style="padding-top:12px"><button type="button" class="btn" data-fecha>Fechar</button></div></div></div>
+
+<div class="fundo" id="modal-carta" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="ct-tit" style="width:min(1000px,100%)"><h2 id="ct-tit">Carta de envio à AGEMAN</h2>
+  <div class="corpo" style="display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:16px;align-items:start" id="ct-corpo">
+    <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+      <div class="campo"><label class="r" for="ct-num">Nº da carta</label><input type="text" id="ct-num"></div>
+      <div class="campo"><label class="r" for="ct-data">Data</label><input type="date" id="ct-data"></div>
+      <div class="campo"><label class="r" for="ct-dest">Destinatário</label><input type="text" id="ct-dest" value="AGEMAN"></div>
+      <div class="campo"><label class="r" for="ct-att">Att.</label><input type="text" id="ct-att" value="Sr. Ebenezer Albuquerque Bezerra"></div>
+      <div class="campo"><label class="r" for="ct-attc">Cargo do destinatário</label><input type="text" id="ct-attc" value="Diretor – Presidente"></div>
+      <div class="campo"><label class="r" for="ct-ass">Assunto</label><input type="text" id="ct-ass" value="Encaminhamento de Projetos AS Built."></div>
+      <div class="campo"><label class="r" for="ct-ref">Referência</label><textarea id="ct-ref" style="min-height:92px">Contrato 012/2019 – Concessão Pública para Gestão, Modernização, Otimização, Expansão, Operação, Manutenção, Controle Remoto em Tempo Real da Infraestrutura, Eficiência Energética e Sustentabilidade Ambiental, da Rede de Iluminação Pública do Município de Manaus.</textarea></div>
+      <div class="campo"><label class="r" for="ct-link">Link para acesso <em>*</em></label><input type="text" id="ct-link" placeholder="cole aqui o link da pasta do Google Drive"></div>
+      <div class="campo"><label class="r" for="ct-nome">Assinatura</label><input type="text" id="ct-nome" value="Carlos Mestrinho"></div>
+      <div class="campo"><label class="r" for="ct-cargo">Cargo</label><input type="text" id="ct-cargo" value="Gerente de Contrato"></div>
+      <button type="button" class="btn" id="ct-gerar">Atualizar carta</button>
+    </div>
+    <div style="min-width:0"><div class="ed-area" id="ct-area" style="max-height:620px"><div class="ed-pag" style="cursor:default"><canvas id="ct-cv"></canvas></div></div><p class="ajuda" id="ct-info" style="margin:8px 0 0"></p></div>
+  </div>
+  <div class="acoes"><button type="button" class="btn" data-fecha>Fechar</button><button type="button" class="btn" id="ct-baixar">⬇ Baixar / imprimir</button><button type="button" class="btn pri" id="ct-anexar">Usar no envio</button></div></div></div>
+
+<div class="fundo" id="modal-rel" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="rl-tit" style="width:min(1060px,100%)"><h2 id="rl-tit">Relatório de projetos</h2>
+  <div class="corpo" style="display:grid;grid-template-columns:minmax(0,290px) minmax(0,1fr);gap:16px;align-items:start" id="rl-corpo">
+    <div class="rel-op"><fieldset><legend>Setores</legend><label><input type="checkbox" id="rl-todos"> <b>Todos</b></label><div id="rl-setores" style="display:flex;flex-direction:column;gap:6px"></div></fieldset>
+      <div class="campo"><label class="r" for="rl-ano">Ano</label><select id="rl-ano"></select></div>
+      <label style="display:flex;gap:8px;align-items:center;font-size:13.5px"><input type="checkbox" id="rl-filtros"> Aplicar também a busca, o tipo e a zona da tela</label>
+      <p class="ajuda" id="rl-info" style="margin:0"></p></div>
+    <div style="min-width:0"><div class="ed-area" id="rl-area" style="max-height:600px"><div class="ed-pag" style="cursor:default"><canvas id="rl-cv"></canvas></div></div>
+      <div style="display:flex;justify-content:center;gap:8px;margin-top:8px" id="rl-pags" hidden><button type="button" class="btn peq" id="rl-pant">‹</button><span class="ajuda" id="rl-pinfo"></span><button type="button" class="btn peq" id="rl-ppro">›</button></div></div>
+  </div>
+  <div class="acoes"><button type="button" class="btn" data-fecha>Fechar</button><button type="button" class="btn" id="rl-xlsx">⬇ Exportar Excel</button><button type="button" class="btn pri" id="rl-pdf">🖨 Baixar / imprimir PDF</button></div></div></div>
+
+<div class="toast" id="toast" hidden></div>
+<div class="carregando" id="carregando" hidden><span></span></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="assets/config.js?v=1"></script>
+<script src="assets/comum.js?v=1"></script>
+<script src="assets/documentos.js?v=1"></script>
+<script src="assets/telas.js?v=1"></script>
+<script src="assets/app.js?v=1"></script>
+</body>
+</html>
