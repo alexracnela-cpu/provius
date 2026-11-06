@@ -23,14 +23,12 @@ $('#f-login').onsubmit = async e => {
   if (error) { er.textContent = /Invalid login/i.test(error.message) ? 'Email ou senha incorretos.' : msgErro(error); er.hidden = false; return; }
   entrar();
 };
-$('#l-esqueci').onclick = async () => {
-  const email = $('#l-email').value.trim().toLowerCase(); const er = $('#l-erro');
-  if (!email) { er.textContent = 'Digite seu email acima e clique de novo em "Esqueci a senha".'; er.hidden = false; return; }
-  ocupado(true); const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname }); ocupado(false);
-  er.hidden = false; er.textContent = error ? msgErro(error) : 'Se esse email estiver cadastrado, chega uma mensagem com o link para criar uma nova senha.';
-};
+$('#l-esqueci').onclick = () => { $('#l-dica').hidden = false; };
 function telaSenha(tipo, email) {
-  $('#s-tit').textContent = tipo === 'recovery' ? 'Crie uma nova senha' : 'Bem-vindo(a) ao Provius';
+  $('#s-tit').textContent = tipo === 'trocar' ? 'Trocar minha senha' : tipo === 'primeiro' ? 'Bem-vindo(a) ao Provius! Crie sua senha' : 'Crie uma nova senha';
+  let v = $('#s-voltar'); if (!v) { v = document.createElement('button'); v.type = 'button'; v.id = 's-voltar'; v.className = 'link-pdf'; v.style.alignSelf = 'center'; v.textContent = 'Voltar'; v.onclick = () => mostra('#app'); $('#f-senha').appendChild(v); }
+  v.hidden = tipo !== 'trocar'; $('#s-erro').hidden = true;
+  if (tipo === 'primeiro') email = (email || '') + ' · você entrou com uma senha provisória';
   $('#s-quem').textContent = email || ''; $('#s1').value = ''; $('#s2').value = ''; senhaRegras(); mostra('#tela-senha');
 }
 function senhaRegras() { const a = $('#s1').value, b = $('#s2').value, r = { len: a.length >= 8, let: /[a-zA-ZÀ-ú]/.test(a), num: /\d/.test(a), eq: !!a && a === b }; $$('#s-regras li').forEach(li => li.classList.toggle('ok', r[li.dataset.r])); $('#s-ok').disabled = !Object.values(r).every(Boolean); }
@@ -39,13 +37,15 @@ $('#f-senha').onsubmit = async e => {
   e.preventDefault(); if ($('#s-ok').disabled) return; ocupado(true);
   const { error } = await sb.auth.updateUser({ password: $('#s1').value }); ocupado(false);
   if (error) { $('#s-erro').textContent = msgErro(error); $('#s-erro').hidden = false; return; }
-  history.replaceState(null, '', location.pathname); entrar(true);
+  history.replaceState(null, '', location.pathname); if ($('#s-voltar') && !$('#s-voltar').hidden) { mostra('#app'); toast('Senha trocada'); return; } toast('Senha criada'); entrar(true);
 };
 $('#sair').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+$('#trocar-senha').onclick = () => telaSenha('trocar', EU?.email);
 
 async function entrar(senhaOk) {
   try { EU = await rpc('registrar_acesso', { p_senha_ok: !!senhaOk }); }
   catch (e) { aviso(e.message, true); return; }
+  if (!EU.senha_ok) { telaSenha('primeiro', EU.email); return; }
   $('#u-eu').innerHTML = `<b>${esc(EU.nome)}</b> · ${esc(EU.setor)}`;
   $$('#abas .aba').forEach(a => a.hidden = !pode(a.dataset.tela));
   mostra('#app'); pintaTema();
@@ -192,23 +192,30 @@ async function usuariosAbrir() {
   const { data, error } = await sb.from('perfis').select('*').order('nome'); if (error) { toast(msgErro(error), true); return; } USU = data || [];
   const st = u => !u.ativo ? 'off' : u.senha_ok ? 'ativo' : (u.convite_expira && new Date(u.convite_expira) < new Date() ? 'exp' : 'pend');
   $('#u-lista').innerHTML = USU.map(u => { const s = st(u);
-    const sit = s === 'ativo' ? '<span class="st ativo">Ativo</span>' : s === 'pend' ? `<span class="st pend">Convite enviado</span><br><small class="ajuda">vence ${dataHora(u.convite_expira)}</small>` : s === 'exp' ? `<span class="st exp">Convite vencido</span><br><small class="ajuda">venceu ${dataHora(u.convite_expira)}</small>` : '<span class="st off">Desativado</span>';
+    const sit = s === 'ativo' ? '<span class="st ativo">Ativo</span>' : s === 'pend' ? `<span class="st pend">Aguardando primeiro acesso</span><br><small class="ajuda">senha provisória vale até ${dataHora(u.convite_expira)}</small>` : s === 'exp' ? `<span class="st exp">Senha provisória vencida</span><br><small class="ajuda">venceu ${dataHora(u.convite_expira)}</small>` : '<span class="st off">Desativado</span>';
     const sel = `<select data-setor="${u.id}" aria-label="Setor de ${esc(u.nome)}" style="width:auto;padding:4px 6px">${['Engenharia', 'Projetos', 'Cadastro', 'Gerência'].map(x => `<option${x === u.setor ? ' selected' : ''}>${x}</option>`).join('')}</select>`;
-    const ac = u.id === EU.id ? '<span class="ajuda">você</span>' : (s === 'off' ? `<button class="btn mini" data-a="on" data-id="${u.id}">Reativar</button>` : (s !== 'ativo' ? `<button class="btn mini${s === 'exp' ? ' pri' : ''}" data-a="reenv" data-id="${u.id}">Reenviar convite</button>` : '') + `<button class="btn mini" data-a="off" data-id="${u.id}">Desativar</button>`);
+    const ac = u.id === EU.id ? '<span class="ajuda">você</span>' : (s === 'off' ? `<button class="btn mini" data-a="on" data-id="${u.id}">Reativar</button>` : `<button class="btn mini${s === 'exp' ? ' pri' : ''}" data-a="senha" data-id="${u.id}">Nova senha provisória</button><button class="btn mini" data-a="off" data-id="${u.id}">Desativar</button>`);
     return `<tr><td class="u-nome"><b>${esc(u.nome)}${u.admin ? ' <span class="pill dias" style="margin:0 0 0 4px">Admin</span>' : ''}</b><small>${esc(u.email)}</small></td><td>${u.id === EU.id ? esc(u.setor) : sel}</td><td>${sit}</td><td>${u.ultimo_acesso ? dataHora(u.ultimo_acesso) : '—'}</td><td><div class="u-acoes">${ac}</div></td></tr>`; }).join('');
   const at = USU.filter(u => st(u) === 'ativo').length, pe = USU.filter(u => ['pend', 'exp'].includes(st(u))).length;
-  $('#u-cont').textContent = `${at} ativo${at === 1 ? '' : 's'} · ${pe} convite${pe === 1 ? '' : 's'} pendente${pe === 1 ? '' : 's'}`;
+  $('#u-cont').textContent = `${at} ativo${at === 1 ? '' : 's'} · ${pe} aguardando primeiro acesso`;
   $$('#u-lista [data-setor]').forEach(s => s.onchange = () => tarefa(() => rpc('admin_alterar_perfil', { p_id: s.dataset.setor, p_setor: s.value, p_ativo: null }), 'Setor alterado'));
   $$('#u-lista button[data-a]').forEach(b => b.onclick = async () => { const u = USU.find(x => x.id === b.dataset.id);
-    if (b.dataset.a === 'reenv') await tarefa(() => convite({ acao: 'reenviar', email: u.email }), 'Novo convite enviado para ' + u.email + '. Vale 24 horas.');
+    if (b.dataset.a === 'senha') { const r = await tarefa(() => acesso({ acao: 'nova_senha', email: u.email })); if (r) mostraSenha(u.nome, r); }
     else await tarefa(() => rpc('admin_alterar_perfil', { p_id: u.id, p_setor: null, p_ativo: b.dataset.a === 'on' }), b.dataset.a === 'on' ? u.nome + ' reativado' : u.nome + ' não consegue mais entrar');
     usuariosAbrir(); });
 }
-async function convite(corpo) {
-  const { data, error } = await sb.functions.invoke('convidar', { body: { ...corpo, site: location.origin + location.pathname } });
+async function acesso(corpo) {
+  const { data, error } = await sb.functions.invoke('convidar', { body: corpo });
   if (error) { let m = error.message; try { const j = await error.context.json(); m = j.erro || m; } catch (e) { } throw new Error(/Failed to send|not found|404/i.test(m) ? 'A função "convidar" ainda não foi publicada no Supabase.' : m); }
   if (data && data.erro) throw new Error(data.erro); return data;
 }
+function mostraSenha(nome, r) {
+  const site = location.origin + location.pathname;
+  $('#ms-nome').textContent = nome; $('#ms-exp').textContent = dataHora(r.expira);
+  $('#ms-txt').value = `Olá, ${nome.split(' ')[0]}! Seu acesso ao Provius (gestão de projetos) foi criado.\n\nSite: ${site}\nEmail: ${r.email}\nSenha provisória: ${r.senha}\n\nA senha provisória vale até ${dataHora(r.expira)}. No primeiro acesso você vai criar a sua própria senha.`;
+  abreModal('#modal-senha');
+}
+$('#ms-copiar').onclick = () => { const t = $('#ms-txt'); (navigator.clipboard ? navigator.clipboard.writeText(t.value) : Promise.reject()).then(() => toast('Mensagem copiada'), () => { t.select(); toast('Selecionado: use Ctrl+C'); }); };
 function usuariosIniciar() {
   const abre = v => { $('#u-sec').hidden = !v; $('#u-novo').hidden = v; $('#u-erro').hidden = true; if (v) $('#u-nome').focus(); else $('#u-form').reset(); };
   $('#u-novo').onclick = () => abre(true); $('#u-cancelar').onclick = () => abre(false);
@@ -216,8 +223,8 @@ function usuariosIniciar() {
     e.preventDefault(); const nome = $('#u-nome').value.trim(), email = $('#u-email').value.trim().toLowerCase(), setor = $('#u-setor').value, er = $('#u-erro');
     let msg = ''; if (!nome) msg = 'Informe o nome.'; else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) msg = 'Esse email não parece válido.'; else if (!setor) msg = 'Escolha o setor.';
     er.hidden = !msg; er.textContent = msg; if (msg) return;
-    const r = await tarefa(() => convite({ acao: 'convidar', nome, email, setor }), 'Convite enviado para ' + email + '. Vale 24 horas.');
-    if (r) { abre(false); usuariosAbrir(); }
+    const r = await tarefa(() => acesso({ acao: 'criar', nome, email, setor }));
+    if (r) { abre(false); usuariosAbrir(); mostraSenha(nome, r); }
   };
 }
 

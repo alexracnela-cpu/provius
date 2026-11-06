@@ -24,6 +24,7 @@
     <span class="erro-msg" id="l-erro" hidden></span>
     <button type="submit" class="btn pri">Entrar</button>
     <button type="button" class="link-pdf" id="l-esqueci" style="align-self:center">Esqueci a senha</button>
+    <span class="ajuda" id="l-dica" hidden style="text-align:center">Peça ao administrador do Provius uma nova senha provisória.</span>
   </form>
 </section>
 
@@ -61,7 +62,7 @@
       <button class="aba" role="tab" data-tela="asb" data-setor="Projetos">5 · As built e AGEMAN</button>
       <button class="aba" role="tab" data-tela="usuarios" data-admin="1">⚙ Usuários</button>
     </div>
-    <div class="usuario"><span id="u-eu"></span><button type="button" class="tema" id="tema" aria-label="Mudar tema"></button><button type="button" class="btn peq" id="sair">Sair</button></div>
+    <div class="usuario"><span id="u-eu"></span><button type="button" class="tema" id="tema" aria-label="Mudar tema"></button><button type="button" class="btn peq" id="trocar-senha" title="Trocar minha senha">🔑</button><button type="button" class="btn peq" id="sair">Sair</button></div>
   </div>
 </header>
 
@@ -280,14 +281,14 @@
 <!-- ===== USUÁRIOS ===== -->
 <main class="pagina sem-lado" id="tela-usuarios" hidden>
   <div style="min-width:0">
-    <div class="cab"><div><div class="etapa">Administração · só o administrador vê esta aba</div><h1>Usuários e acessos</h1><p class="sub">A pessoa recebe um convite por email e cria a própria senha no primeiro acesso. O setor define a fila que ela vê.</p></div><button type="button" class="btn pri" id="u-novo">+ Novo usuário</button></div>
+    <div class="cab"><div><div class="etapa">Administração · só o administrador vê esta aba</div><h1>Usuários e acessos</h1><p class="sub">Você cria o acesso com uma senha provisória e repassa para a pessoa. No primeiro acesso ela cria a própria senha. O setor define a fila que ela vê.</p></div><button type="button" class="btn pri" id="u-novo">+ Novo usuário</button></div>
     <section class="secao" id="u-sec" hidden><h2>Novo usuário</h2>
       <form class="u-form" id="u-form" novalidate>
         <div class="campo"><label class="r" for="u-nome">Nome <em>*</em></label><input type="text" id="u-nome"></div>
         <div class="campo"><label class="r" for="u-email">Email <em>*</em></label><input type="text" id="u-email" inputmode="email"></div>
         <div class="campo"><label class="r" for="u-setor">Setor <em>*</em></label><select id="u-setor"><option value="">Selecione</option><option>Engenharia</option><option>Projetos</option><option>Cadastro</option><option>Gerência</option></select></div>
-        <div class="campo"><span class="r">Validade do convite</span><div class="zona on">24 horas</div></div>
-        <div class="acoes"><button type="button" class="btn" id="u-cancelar">Cancelar</button><button type="submit" class="btn pri" id="u-enviar">✉ Enviar convite</button></div>
+        <div class="campo"><span class="r">Senha provisória</span><div class="zona on">gerada na hora · vale 24 h</div></div>
+        <div class="acoes"><button type="button" class="btn" id="u-cancelar">Cancelar</button><button type="submit" class="btn pri" id="u-enviar">Criar acesso</button></div>
         <span class="erro-msg" id="u-erro" hidden style="grid-column:1/-1"></span>
       </form></section>
     <section class="secao"><h2>Pessoas cadastradas <span class="contador" id="u-cont" style="text-transform:none;letter-spacing:0"></span></h2>
@@ -348,6 +349,11 @@
   </div>
   <div class="acoes"><button type="button" class="btn" data-fecha>Fechar</button><button type="button" class="btn" id="rl-xlsx">⬇ Exportar Excel</button><button type="button" class="btn pri" id="rl-pdf">🖨 Baixar / imprimir PDF</button></div></div></div>
 
+<div class="fundo" id="modal-senha" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="ms-tit"><h2 id="ms-tit">Acesso criado</h2><div class="corpo">
+  <p style="margin:0">Repasse estes dados para <b id="ms-nome"></b> (WhatsApp, por exemplo). A senha provisória vale até <b id="ms-exp"></b>; no primeiro acesso a pessoa cria a própria senha.</p>
+  <textarea id="ms-txt" readonly style="min-height:150px;font-family:var(--f-num);font-size:13px"></textarea>
+  <p class="ajuda" style="margin:0">Esta senha não fica guardada em lugar nenhum. Se perder, gere outra em "Nova senha provisória".</p></div>
+  <div class="acoes"><button type="button" class="btn" data-fecha>Fechar</button><button type="button" class="btn pri" id="ms-copiar">Copiar mensagem</button></div></div></div>
 <div class="toast" id="toast" hidden></div>
 <div class="carregando" id="carregando" hidden><span></span></div>
 
