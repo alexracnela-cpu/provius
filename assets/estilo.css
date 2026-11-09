@@ -380,9 +380,9 @@ td input[type=number]{width:100px;text-align:right;font-family:var(--f-num)}
 .cab-bts{display:flex;flex-wrap:wrap;gap:8px}
 .trava{display:inline-flex;align-items:center;gap:6px;margin:8px 0 0;padding:4px 12px;border-radius:20px;font:600 13px var(--f-corpo)}
 .trava.eu{background:var(--ok-bg);color:var(--ok)}
-.trava.outro{background:var(--ambar-bg);color:var(--ambar)}
+.trava.outro{background:var(--azul-bg);color:var(--azul);border:1px solid var(--azul)}
 .trava b{font-weight:700}
-.pill.trava{display:inline-block;margin:4px 0 0 4px;padding:2px 8px;font:600 11px var(--f-corpo);background:var(--ok-bg);color:var(--ok)}
-.pill.trava.outro{background:var(--ambar-bg);color:var(--ambar)}
+.pill.trava{display:inline-block;margin:4px 0 0 4px;padding:2px 8px;font:700 11px var(--f-corpo);background:var(--ok);color:var(--bg)}
+.pill.trava.outro{background:var(--azul);color:var(--bg)}
 .so-leitura .secao{opacity:.72}
 .so-leitura .upload{pointer-events:none}
