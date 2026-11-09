@@ -67,7 +67,7 @@ async function recarregar() {
     if (error) { if (!SEM_URG && /urgente/.test(error.message || '')) { SEM_URG = true; todos = []; de = 0; continue; }
       if (!SEM_TRAVA && /editando_/.test(error.message || '')) { SEM_TRAVA = true; todos = []; de = 0; continue; } toast(msgErro(error), true); break; }
     todos = todos.concat(data); if (data.length < N) break; de += N; }
-  D = todos; if (TELA === 'todos' && !$('#tela-todos').hidden) todosDesenha();
+  D = todos.map(normMP); if (TELA === 'todos' && !$('#tela-todos').hidden) todosDesenha();
 }
 function abrirTela(t, recarregou) {
   if (!pode(t)) t = 'todos'; if (t !== 'projetos') travaLiberar(); TELA = t;
@@ -125,10 +125,11 @@ function filtrados() {
 const CURTO = ['Croqui', 'Projeto', 'Execução', 'Emplaquetamento', 'As built', 'AGEMAN'];
 function trilha(d) {
   if (d.cancelado) return `<div class="trilha"><span class="tp feito"><i></i><em>Croqui</em></span><span class="tp canc"><i></i><em>Cancelado</em></span>${'<span class="tp nada"><i></i><em>-</em></span>'.repeat(4)}</div>`;
-  return `<div class="trilha">${CURTO.map((t, i) => { let c = 'pend'; if (d.etapa === 6) c = i === 5 ? 'fim' : 'feito'; else if (i < d.etapa) c = 'feito'; else if (i === d.etapa) c = 'agora'; return `<span class="tp ${c}" title="${t}"><i></i><em>${i === 5 && d.etapa === 6 ? 'Enviado' : t}</em></span>`; }).join('')}</div>`;
+  return `<div class="trilha">${CURTO.map((t, i) => { let c = 'pend'; if (d.etapa === 6) c = i === 5 ? 'fim' : 'feito'; else if (i < d.etapa) c = 'feito'; else if (i === d.etapa) c = 'agora'; return `<span class="tp ${c}" title="${t}"><i></i><em>${i === 5 && d.etapa === 6 ? (d.enviado_ageman ? 'Enviado' : 'Concluído') : t}</em></span>`; }).join('')}</div>`;
 }
 function frase(d) {
   if (d.cancelado) return '<span class="quem">Cancelado</span><span>Projeto cancelado.</span>';
+  if (d.so_desenho) return '<span class="quem">Concluído</span><span>MP- só desenho (sem as built e sem AGEMAN).</span>';
   if (d.etapa === 6 && d.tipo === 'R' && !d.enviado_ageman) return '<span class="quem">Concluído</span><span>Concluído em Projetos (R- não adquirido, não vai à AGEMAN).</span>';
   if (d.etapa === 6) return `<span class="quem">Concluído</span><span>Enviado à AGEMAN${d.enviado_ageman ? ' em <strong>' + dataBR(d.enviado_ageman) + '</strong>' : ''}.</span>`;
   if (d.etapa === 5) return '<span class="quem">Projetos</span><span>Pronto. Aguardando envio à AGEMAN.</span>';
@@ -149,7 +150,7 @@ const ROT_ARQ = { pedido: 'Pedido', croqui: 'Croqui', projeto: 'Projeto', correc
 async function detalhe(id) {
   const p = await tarefa(() => carregarProcesso(id)); if (!p) return;
   $('#det-tit').textContent = p.numero + (p.cancelado ? ' · CANCELADO' : '');
-  const info = [...(p.tipo === 'R' ? [['Aquisição', p.adquirido === true ? 'Adquirido' : p.adquirido === false ? 'Não adquirido' : '—']] : []), ['Serviço', p.tipo_servico || '—'], ['Logradouro', p.logradouro], ['Bairro / zona', (p.bairro || '') + ' · ' + (p.zona || '')], ['Pontos', p.total_pontos], ['Encaminhamento', p.ref_pedido || '—'], ['Etapa', p.cancelado ? 'Cancelado' : p.etapa === 6 ? 'Enviado à AGEMAN em ' + dataBR(p.enviado_ageman) : ETAPAS[p.etapa].setor + ' · ' + ETAPAS[p.etapa].nome]].map(([k, v]) => `<div><span class="ajuda">${k}</span><br><b>${esc(v)}</b></div>`).join('');
+  const info = [...(p.tipo === 'R' ? [['Aquisição', p.adquirido === true ? 'Adquirido' : p.adquirido === false ? 'Não adquirido' : '—']] : []), ['Serviço', p.tipo_servico || '—'], ['Logradouro', p.logradouro], ['Bairro / zona', (p.bairro || '') + ' · ' + (p.zona || '')], ['Pontos', p.total_pontos], ['Encaminhamento', p.ref_pedido || '—'], ['Etapa', p.cancelado ? 'Cancelado' : p.so_desenho ? 'Concluído (MP- só desenho, sem as built)' : p.etapa === 6 ? (p.enviado_ageman ? 'Enviado à AGEMAN em ' + dataBR(p.enviado_ageman) : 'Concluído em Projetos') : ETAPAS[p.etapa].setor + ' · ' + ETAPAS[p.etapa].nome]].map(([k, v]) => `<div><span class="ajuda">${k}</span><br><b>${esc(v)}</b></div>`).join('');
   const passos = `<ol class="passos">${[1, 2, 3, 4, 5, 6].map(e => `<li class="${p.cancelado ? '' : e < p.etapa || (e === 6 && p.etapa === 6) ? 'feito' : e === p.etapa ? 'agora' : ''}"><span><b>${ETAPAS[e].setor} · ${ETAPAS[e].nome}</b><small>${e === p.etapa && e < 6 && !p.cancelado ? 'está aqui desde ' + dataBR(p.etapa_desde) : ''}</small></span></li>`).join('')}</ol>`;
   const arqs = p.arquivos.length ? `<div class="arq-lista" style="padding:0">${p.arquivos.map(a => `<button type="button" data-a="${a.id}"><b>${/\.pdf$/i.test(a.caminho) ? 'PDF' : 'FOTO'}</b>${esc(ROT_ARQ[a.tipo] || a.tipo)} · ${esc(a.nome || '')}<small>${esc(a.por_nome || '')} · ${dataBR(a.em)}</small></button>`).join('')}</div>` : '<p class="ajuda" style="margin:0">Sem arquivos (processo do histórico da planilha).</p>';
   const hist = p.movimentos.length ? `<ul class="hist" style="padding:0">${p.movimentos.map(m => `<li><span>${dataBR(m.em)}</span><b style="font-weight:500">${esc(m.por_nome || '')}: ${esc(textoMov(m))}</b></li>`).join('')}</ul>` : '<p class="ajuda" style="margin:0">Sem movimentos registrados (histórico da planilha).</p>';

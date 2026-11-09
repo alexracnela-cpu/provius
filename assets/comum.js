@@ -109,6 +109,9 @@ function baixarBlob(nome, blob) {
 function abrirBlob(blob) { const u = URL.createObjectURL(blob); window.open(u, '_blank', 'noopener'); setTimeout(() => URL.revokeObjectURL(u), 60000); }
 
 // detalhes completos de um processo
+// MP- (manutenção preventiva) era só para desenhar: não passa pelo as built nem vai à AGEMAN.
+// Os que estavam parados no as built (etapa 4) ou prontos p/ AGEMAN (etapa 5) contam como concluídos.
+function normMP(d) { if (d && d.tipo === 'MP' && !d.cancelado && !d.enviado_ageman && (d.etapa === 4 || d.etapa === 5)) { d.etapa = 6; d.so_desenho = true; } return d; }
 async function carregarProcesso(id) {
   const [p, a, m] = await Promise.all([
     sb.from('processos').select('*').eq('id', id).single(),
@@ -116,7 +119,7 @@ async function carregarProcesso(id) {
     sb.from('movimentos').select('*').eq('processo_id', id).order('em')
   ]);
   if (p.error) throw new Error(msgErro(p.error));
-  return { ...p.data, arquivos: a.data || [], movimentos: m.data || [] };
+  return normMP({ ...p.data, arquivos: a.data || [], movimentos: m.data || [] });
 }
 const ultimoArquivo = (p, tipo) => (p.arquivos || []).filter(a => a.tipo === tipo).slice(-1)[0];
 
