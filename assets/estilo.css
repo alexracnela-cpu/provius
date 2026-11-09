@@ -386,3 +386,8 @@ td input[type=number]{width:100px;text-align:right;font-family:var(--f-num)}
 .pill.trava.outro{background:var(--azul);color:var(--bg)}
 .so-leitura .secao{opacity:.72}
 .so-leitura .upload{pointer-events:none}
+
+/* urgência */
+.seg.urg label.u:has(input:checked){background:var(--erro);color:#fff}
+.pill.urg{background:var(--erro);color:#fff;margin-right:4px}
+.cartao.urgente{box-shadow:inset 4px 0 0 var(--erro)}

@@ -132,10 +132,11 @@ function seloTrava(d) {
 }
 
 // fila de um setor
-function filaDe(etapa) { return D.filter(d => d.etapa === etapa && !d.cancelado).sort((a, b) => new Date(a.etapa_desde) - new Date(b.etapa_desde)); }
+function filaDe(etapa) { return D.filter(d => d.etapa === etapa && !d.cancelado).sort((a, b) => (!!b.urgente - !!a.urgente) || new Date(a.etapa_desde) - new Date(b.etapa_desde)); }   // urgentes primeiro
+const seloUrg = d => d && d.urgente ? '<span class="pill urg">🔴 Urgente</span>' : '';
 function itemFila(p, i, at) {
   const dd = diasDesde(p.etapa_desde);
-  return `<button class="item" data-i="${i}" aria-current="${i === at}"><span class="n">${esc(p.numero)}</span><span class="l">${esc(p.logradouro)}</span>` +
+  return `<button class="item" data-i="${i}" aria-current="${i === at}"><span class="n">${esc(p.numero)}</span><span class="l">${esc(p.logradouro)}</span>` + seloUrg(p) +
     (p.devolvido ? '<span class="pill dev">Devolvido</span> ' : '') +
     (dd !== null ? `<span class="pill ${dd > 60 ? 'dev' : 'dias'}">${dd} dia${dd === 1 ? '' : 's'} aqui</span>` : '') + seloTrava(p) + '</button>';
 }

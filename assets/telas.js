@@ -24,10 +24,18 @@ function pedidoIniciar() {
         referencia: $('#p-refer').value.trim(), ja_executado: $('input[name=p-exec]:checked').value === 'sim', obs: $('#p-obs').value.trim(), croqui: c, pedido: pd } });
     });
     if (!r) return;
-    toast('Processo ' + r.numero + ' cadastrado e entregue para Projetos');
+    const urg = $('input[name=p-urg]:checked').value === 'sim';
+    if (urg) await marcarUrgente(r.id ?? (await sb.from('processos').select('id').eq('numero', r.numero).single()).data?.id, true);
+    toast('Processo ' + r.numero + (urg ? ' (URGENTE)' : '') + ' cadastrado e entregue para Projetos');
     $('#f-ped').reset(); $('#p-up-croqui')._limpa(); $('#p-up-ped')._limpa(); $('#p-zona').textContent = 'escolha o bairro'; $('#p-zona').classList.remove('on'); $('#p-data').value = hojeISO();
     await recarregar(); pedidoNumero();
   };
+}
+// urgência: gravada por função própria no banco (fica registrada no histórico)
+async function marcarUrgente(id, urg) {
+  if (!id) return false;
+  try { await rpc('marcar_urgente', { p_id: id, p_urgente: !!urg }); return true; }
+  catch (e) { console.error(e); toast('Não consegui gravar a urgência. Falta rodar o SQL provius-urgente.sql no Supabase.', true); return false; }
 }
 async function pedidoAbrir() {
   if (!$('#p-bairro').options.length) selectBairros($('#p-bairro'));
@@ -145,6 +153,7 @@ async function projetosAbrir(idSel) {
   $('#j-origem').value = p.origem || ''; $('#j-ref').value = p.ref_pedido || ''; $('#j-logr').value = p.logradouro || '';
   selectBairros($('#j-bairro'), p.bairro); $('#j-zona').textContent = p.zona || '';
   $$('input[name=j-exec]').forEach(r => r.checked = (r.value === 'sim') === !!p.ja_executado);
+  $$('input[name=j-urg]').forEach(r => r.checked = (r.value === 'sim') === !!p.urgente);
   $('#j-obsped-c').hidden = !p.obs_pedido; $('#j-obsped').textContent = p.obs_pedido || '';
   $('#j-pot').innerHTML = ''; Object.entries(p.potencias || {}).forEach(([w, q]) => potLinha(+w, q)); if (!Object.keys(p.potencias || {}).length) potLinha(50, '');
   $('#j-cv').value = p.mod_cv || ''; $('#j-mo').value = p.mod_mod || ''; $('#j-de').value = p.mod_dest || ''; potSoma();
@@ -173,6 +182,8 @@ async function projetosGravar(entregar) {
     bairro: $('#j-bairro').value, ja_executado: $('input[name=j-exec]:checked')?.value === 'sim', potencias: potLer(),
     mod_cv: +$('#j-cv').value || 0, mod_mod: +$('#j-mo').value || 0, mod_dest: +$('#j-de').value || 0, obs_projetos: $('#j-obs').value.trim() };
   const arq = $('#j-up')._arqs[0];
+  const urg = $('input[name=j-urg]:checked')?.value === 'sim';
+  if (urg !== !!p.urgente && await marcarUrgente(p.id, urg)) p.urgente = urg;
   const r = await tarefa(async () => {
     if (arq) { const a = await enviarArquivo('processos/' + p.id, 'projeto', arq); await rpc('registrar_arquivo', { p_id: p.id, p_tipo: 'projeto', p_caminho: a.caminho, p_nome: a.nome, p_tamanho: a.tamanho }); $('#j-up')._limpa(); }
     if (entregar) return rpc('entregar', { p_id: p.id, p_campos: campos });

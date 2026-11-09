@@ -125,6 +125,7 @@
         <div class="campo largo"><span class="r">Croqui em PDF <em>*</em></span>
           <div class="upload" id="p-up-croqui"><span class="pdf-ico">PDF</span><span class="nome">Nenhum arquivo. Só PDF, até 10 MB.</span><label class="btn peq" for="p-arq-croqui">Escolher PDF</label><input type="file" id="p-arq-croqui" accept="application/pdf,.pdf" hidden></div></div>
         <div class="campo"><span class="r">Já executado?</span><div class="seg"><label><input type="radio" name="p-exec" value="nao" checked>Não</label><label><input type="radio" name="p-exec" value="sim">Sim</label></div><span class="ajuda">Se sim, o processo pula a etapa de execução.</span></div>
+        <div class="campo"><span class="r">Prioridade</span><div class="seg urg"><label><input type="radio" name="p-urg" value="nao" checked>Normal</label><label class="u"><input type="radio" name="p-urg" value="sim">🔴 Urgente</label></div><span class="ajuda">Urgente aparece no topo da fila de cada setor.</span></div>
         <div class="campo largo"><label class="r" for="p-obs">Observações</label><textarea id="p-obs" placeholder="algo que Projetos precise saber"></textarea></div>
       </div></section>
       <div class="acoes"><button type="submit" class="btn pri" id="p-ok">Cadastrar e entregar para Projetos →</button></div>
@@ -147,6 +148,7 @@
           <div class="campo largo"><label class="r" for="j-logr">Logradouro</label><input type="text" id="j-logr"></div>
           <div class="campo"><label class="r" for="j-bairro">Bairro</label><select id="j-bairro"></select></div>
           <div class="campo"><span class="r">Zona</span><div class="zona on" id="j-zona"></div></div>
+          <div class="campo"><span class="r">Prioridade</span><div class="seg urg"><label><input type="radio" name="j-urg" value="nao">Normal</label><label class="u"><input type="radio" name="j-urg" value="sim">🔴 Urgente</label></div></div>
           <div class="campo"><span class="r">Já executado?</span><div class="seg"><label><input type="radio" name="j-exec" value="nao">Não</label><label><input type="radio" name="j-exec" value="sim">Sim</label></div></div>
           <div class="campo largo" id="j-obsped-c" hidden><span class="r">Observação da Engenharia</span><div class="zona on" id="j-obsped"></div></div>
         </div></section>

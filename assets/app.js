@@ -58,12 +58,14 @@ const TELA_HASH = () => { const h = location.hash.replace('#', ''); return TELAS
 
 // ---------- dados ----------
 const COLS = 'id,numero,tipo,ano,etapa,etapa_desde,cancelado,tipo_servico,ref_pedido,croqui_recebido,logradouro,bairro,zona,total_pontos,potencias,mod_cv,mod_mod,mod_dest,entregue_execucao,enviado_ageman,devolvido,criado_em';
+let SEM_URG = false;    // banco ainda sem a coluna urgente: o sistema funciona sem ela
 const COLS_TRAVA = ',editando_por,editando_nome,editando_desde,editando_em';
 async function recarregar() {
   let todos = [], de = 0; const N = 1000;
   for (; ;) {
-    const { data, error } = await sb.from('processos').select(COLS + (SEM_TRAVA ? '' : COLS_TRAVA)).order('id').range(de, de + N - 1);
-    if (error) { if (!SEM_TRAVA && /editando_/.test(error.message || '')) { SEM_TRAVA = true; todos = []; de = 0; continue; } toast(msgErro(error), true); break; }
+    const { data, error } = await sb.from('processos').select(COLS + (SEM_URG ? '' : ',urgente') + (SEM_TRAVA ? '' : COLS_TRAVA)).order('id').range(de, de + N - 1);
+    if (error) { if (!SEM_URG && /urgente/.test(error.message || '')) { SEM_URG = true; todos = []; de = 0; continue; }
+      if (!SEM_TRAVA && /editando_/.test(error.message || '')) { SEM_TRAVA = true; todos = []; de = 0; continue; } toast(msgErro(error), true); break; }
     todos = todos.concat(data); if (data.length < N) break; de += N; }
   D = todos; if (TELA === 'todos' && !$('#tela-todos').hidden) todosDesenha();
 }
@@ -108,7 +110,7 @@ function esteira() {
 function quadro() {
   const COR = { 1: 'Projetos', 2: 'Engenharia', 3: 'Cadastro', 4: 'Projetos', 5: 'pronto' };
   $('#quadro').innerHTML = [1, 2, 3, 4, 5].map(e => { const it = filaDe(e);
-    return `<div class="col s-${COR[e]}"><h3><span><small>${ETAPAS[e].setor}</small>${ETAPAS[e].nome}</span><b>${it.length}</b></h3><div class="cartoes">${it.map(d => `<button type="button" class="cartao t-${d.tipo || 'X'}" data-id="${d.id}"><span class="n">${esc(d.numero)}</span><span class="l">${esc(d.logradouro)}</span><span class="m"><span>${esc(d.bairro || '')}</span><span>${d.total_pontos} pts</span></span></button>`).join('') || '<span class="vazio" style="padding:4px">Nada parado aqui.</span>'}</div></div>`; }).join('');
+    return `<div class="col s-${COR[e]}"><h3><span><small>${ETAPAS[e].setor}</small>${ETAPAS[e].nome}</span><b>${it.length}</b></h3><div class="cartoes">${it.map(d => `<button type="button" class="cartao t-${d.tipo || 'X'}${d.urgente ? ' urgente' : ''}" data-id="${d.id}"><span class="n">${esc(d.numero)}</span>${seloUrg(d)}<span class="l">${esc(d.logradouro)}</span><span class="m"><span>${esc(d.bairro || '')}</span><span>${d.total_pontos} pts</span></span></button>`).join('') || '<span class="vazio" style="padding:4px">Nada parado aqui.</span>'}</div></div>`; }).join('');
   $$('#quadro .cartao').forEach(c => c.onclick = () => detalhe(+c.dataset.id));
 }
 function ordem() { const o = $('#f-ordem').value, rec = (x, y) => y.ano - x.ano || y.numero.localeCompare(x.numero);
