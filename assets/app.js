@@ -39,7 +39,7 @@ $('#f-senha').onsubmit = async e => {
   if (error) { $('#s-erro').textContent = msgErro(error); $('#s-erro').hidden = false; return; }
   history.replaceState(null, '', location.pathname); if ($('#s-voltar') && !$('#s-voltar').hidden) { mostra('#app'); toast('Senha trocada'); return; } toast('Senha criada'); entrar(true);
 };
-$('#sair').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+$('#sair').onclick = async () => { await travaLiberar(); await sb.auth.signOut(); location.reload(); };
 $('#trocar-senha').onclick = () => telaSenha('trocar', EU?.email);
 
 async function entrar(senhaOk) {
@@ -58,13 +58,17 @@ const TELA_HASH = () => { const h = location.hash.replace('#', ''); return TELAS
 
 // ---------- dados ----------
 const COLS = 'id,numero,tipo,ano,etapa,etapa_desde,cancelado,tipo_servico,ref_pedido,croqui_recebido,logradouro,bairro,zona,total_pontos,potencias,mod_cv,mod_mod,mod_dest,entregue_execucao,enviado_ageman,devolvido,criado_em';
+const COLS_TRAVA = ',editando_por,editando_nome,editando_desde,editando_em';
 async function recarregar() {
   let todos = [], de = 0; const N = 1000;
-  for (; ;) { const { data, error } = await sb.from('processos').select(COLS).order('id').range(de, de + N - 1); if (error) { toast(msgErro(error), true); break; } todos = todos.concat(data); if (data.length < N) break; de += N; }
+  for (; ;) {
+    const { data, error } = await sb.from('processos').select(COLS + (SEM_TRAVA ? '' : COLS_TRAVA)).order('id').range(de, de + N - 1);
+    if (error) { if (!SEM_TRAVA && /editando_/.test(error.message || '')) { SEM_TRAVA = true; todos = []; de = 0; continue; } toast(msgErro(error), true); break; }
+    todos = todos.concat(data); if (data.length < N) break; de += N; }
   D = todos; if (TELA === 'todos' && !$('#tela-todos').hidden) todosDesenha();
 }
 function abrirTela(t, recarregou) {
-  if (!pode(t)) t = 'todos'; TELA = t;
+  if (!pode(t)) t = 'todos'; if (t !== 'projetos') travaLiberar(); TELA = t;
   $$('#abas .aba').forEach(a => a.setAttribute('aria-selected', a.dataset.tela === t));
   Object.keys(TELAS).forEach(k => $('#tela-' + k).hidden = k !== t);
   try { history.replaceState(null, '', '#' + t); } catch (e) { }

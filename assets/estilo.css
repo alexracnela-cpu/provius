@@ -375,3 +375,14 @@ td input[type=number]{width:100px;text-align:right;font-family:var(--f-num)}
 .det-sec h4{margin:4px 0 0;font:600 12px var(--f-corpo);text-transform:uppercase;letter-spacing:.08em;color:var(--suave)}
 .btn:disabled{opacity:.55;cursor:not-allowed}
 .toast.erro{background:var(--erro);color:#fff}
+
+/* trava de edição: quem está mexendo no processo */
+.cab-bts{display:flex;flex-wrap:wrap;gap:8px}
+.trava{display:inline-flex;align-items:center;gap:6px;margin:8px 0 0;padding:4px 12px;border-radius:20px;font:600 13px var(--f-corpo)}
+.trava.eu{background:var(--ok-bg);color:var(--ok)}
+.trava.outro{background:var(--ambar-bg);color:var(--ambar)}
+.trava b{font-weight:700}
+.pill.trava{display:inline-block;margin:4px 0 0 4px;padding:2px 8px;font:600 11px var(--f-corpo);background:var(--ok-bg);color:var(--ok)}
+.pill.trava.outro{background:var(--ambar-bg);color:var(--ambar)}
+.so-leitura .secao{opacity:.72}
+.so-leitura .upload{pointer-events:none}

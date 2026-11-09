@@ -120,13 +120,24 @@ async function carregarProcesso(id) {
 }
 const ultimoArquivo = (p, tipo) => (p.arquivos || []).filter(a => a.tipo === tipo).slice(-1)[0];
 
+// trava de edição: quem está mexendo no processo (vale 30 minutos sem atividade)
+const TRAVA_MIN = 30;
+let SEM_TRAVA = false;    // banco ainda sem as colunas/funções da trava: o sistema funciona sem ela
+const travaAtiva = d => !!(d && d.editando_por && d.editando_em && Date.now() - new Date(d.editando_em).getTime() < TRAVA_MIN * 6e4);
+const primeiroNome = n => String(n || '').trim().split(/\s+/)[0] || 'alguém';
+function seloTrava(d) {
+  if (SEM_TRAVA || !travaAtiva(d)) return '';
+  const eu = EU && d.editando_por === EU.id;
+  return ` <span class="pill trava${eu ? '' : ' outro'}" title="${eu ? 'Você está editando este processo' : 'Em edição por ' + esc(d.editando_nome || '')}">✎ ${eu ? 'Você' : esc(primeiroNome(d.editando_nome))}</span>`;
+}
+
 // fila de um setor
 function filaDe(etapa) { return D.filter(d => d.etapa === etapa && !d.cancelado).sort((a, b) => new Date(a.etapa_desde) - new Date(b.etapa_desde)); }
 function itemFila(p, i, at) {
   const dd = diasDesde(p.etapa_desde);
   return `<button class="item" data-i="${i}" aria-current="${i === at}"><span class="n">${esc(p.numero)}</span><span class="l">${esc(p.logradouro)}</span>` +
     (p.devolvido ? '<span class="pill dev">Devolvido</span> ' : '') +
-    (dd !== null ? `<span class="pill ${dd > 60 ? 'dev' : 'dias'}">${dd} dia${dd === 1 ? '' : 's'} aqui</span>` : '') + '</button>';
+    (dd !== null ? `<span class="pill ${dd > 60 ? 'dev' : 'dias'}">${dd} dia${dd === 1 ? '' : 's'} aqui</span>` : '') + seloTrava(p) + '</button>';
 }
 function faixaDevolvido(el, p) {
   const d = p.devolvido; el.hidden = !d;

@@ -42,6 +42,59 @@ function pedidoNumero() {
   $('#num-prev').textContent = n($('input[name=tipo]:checked').value);
 }
 
+// ================= trava de edição (quem está mexendo no processo) =================
+// Ao abrir um processo na Tela 2 ele fica marcado no nome de quem abriu. Quem abrir depois vê "Em edição por …"
+// e fica só em leitura. A marcação sai ao entregar, devolver, cancelar, trocar de processo ou de aba, fechar a
+// página, ou depois de 30 minutos sem mexer (a cada minuto com atividade ela é renovada).
+const TRAVA = { id: null, meu: false, timer: null, mexeu: false, token: null, n: 0, alvo: null };
+['click', 'keydown', 'input', 'scroll', 'mousemove', 'touchstart'].forEach(ev => document.addEventListener(ev, () => { TRAVA.mexeu = true; }, { passive: true, capture: true }));
+function travaNoD(id, r) { const d = D.find(x => x.id === id); if (!d) return; d.editando_por = r?.por || null; d.editando_nome = r?.nome || null; d.editando_desde = r?.desde || null; d.editando_em = r?.em || null; }
+async function travaMarcar(id, assumir) {
+  if (SEM_TRAVA) return { meu: true };
+  const n = ++TRAVA.n; TRAVA.alvo = id;
+  try {
+    const { data: { session } } = await sb.auth.getSession(); TRAVA.token = session?.access_token || TRAVA.token;
+    const r = await rpc('marcar_edicao', { p_id: id, p_assumir: !!assumir });
+    if (n !== TRAVA.n) { if (r.meu && id !== TRAVA.alvo) rpc('liberar_edicao', { p_id: id }).catch(() => { }); return r; }   // já mudou de processo
+    TRAVA.id = id; TRAVA.meu = !!r.meu; travaNoD(id, r);
+    clearInterval(TRAVA.timer); TRAVA.timer = r.meu ? setInterval(travaRenova, 6e4) : null; TRAVA.mexeu = false;
+    return r;
+  } catch (e) {
+    if (/banco ainda não foi atualizado/.test(e.message)) SEM_TRAVA = true; else console.error(e);
+    return { meu: true };   // sem conseguir marcar, não trava o trabalho de ninguém
+  }
+}
+async function travaRenova() {
+  if (!TRAVA.meu || !TRAVA.id || !TRAVA.mexeu || TELA !== 'projetos') return;   // sem atividade, a marcação vence sozinha em 30 min
+  const id = TRAVA.id, r = await travaMarcar(id, false);
+  if (!r.meu && PJ.p && PJ.p.id === id) {
+    projetosModo(r); projetosFila();
+    toast(primeiroNome(r.nome) + ' assumiu a edição de ' + PJ.p.numero + '. O que você não salvou não foi gravado.', true);
+  }
+}
+async function travaLiberar() {
+  const id = TRAVA.id, meu = TRAVA.meu; clearInterval(TRAVA.timer); TRAVA.n++; Object.assign(TRAVA, { id: null, meu: false, timer: null, alvo: null });
+  if (!id || !meu || SEM_TRAVA) return; travaNoD(id, null);
+  try { await rpc('liberar_edicao', { p_id: id }); } catch (e) { console.error(e); }
+}
+// ao fechar a aba ou o navegador: libera mesmo com a página saindo
+window.addEventListener('pagehide', () => {
+  if (!TRAVA.id || !TRAVA.meu || SEM_TRAVA || !TRAVA.token) return;
+  try { fetch(CFG.SUPABASE_URL + '/rest/v1/rpc/liberar_edicao', { method: 'POST', keepalive: true, headers: { apikey: CFG.SUPABASE_CHAVE, Authorization: 'Bearer ' + TRAVA.token, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_id: TRAVA.id }) }); } catch (e) { }
+});
+window.addEventListener('pageshow', e => { if (e.persisted && TELA === 'projetos' && PJ.p) projetosAbrir(PJ.p.id); });
+// a cada 30 s atualiza na fila quem está mexendo em quê
+setInterval(async () => {
+  if (SEM_TRAVA || !EU || TELA !== 'projetos' || document.hidden) return;
+  const { data, error } = await sb.from('processos').select('id,editando_por,editando_nome,editando_desde,editando_em').eq('etapa', 1);
+  if (error || !data) return;
+  data.forEach(x => { const d = D.find(y => y.id === x.id); if (d) Object.assign(d, x); });
+  projetosFila();
+  // se eu estava só olhando e a outra pessoa saiu, o processo passa para mim
+  if (PJ.p && TRAVA.id === PJ.p.id && !TRAVA.meu && !travaAtiva(D.find(d => d.id === PJ.p.id))) { toast('O processo ' + PJ.p.numero + ' foi liberado. Agora você pode editar.'); projetosAbrir(PJ.p.id); }
+}, 30000);
+const horaTrava = t => { if (!t) return ''; const d = new Date(t); return d.toDateString() === new Date().toDateString() ? d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : dataHora(t); };
+
 // ================= 2 · PROJETOS: elaborar =================
 const PJ = { fila: [], at: 0, p: null };
 function projetosIniciar() {
@@ -53,14 +106,38 @@ function projetosIniciar() {
   $('#j-salvar').onclick = () => projetosGravar(false);
   $('#j-ok').onclick = () => projetosGravar(true);
   $('#j-canc').onclick = () => abrirCancelar(PJ.p);
+  $('#j-assumir').onclick = async () => {
+    const p = PJ.p, d = D.find(x => x.id === p?.id); if (!p) return;
+    const nome = primeiroNome(d?.editando_nome);
+    if (!confirm(`${nome} está editando o processo ${p.numero}.\n\nAssumir a edição? O que ${nome} ainda não salvou não será gravado, e fica registrado no histórico que você assumiu.`)) return;
+    ocupado(true); await travaMarcar(p.id, true); ocupado(false);
+    toast('Você assumiu a edição de ' + p.numero); projetosAbrir(p.id);
+  };
+}
+function projetosFila() {
+  $('#j-fila').innerHTML = PJ.fila.map((p, i) => itemFila(D.find(d => d.id === p.id) || p, i, PJ.at)).join('') || '<p class="vazio">Fila vazia.</p>';
+  $$('#j-fila .item').forEach(b => b.onclick = () => { PJ.at = +b.dataset.i; projetosAbrir(PJ.fila[PJ.at].id); });
+}
+// com a trava: "Você está editando" ou "Em edição por …" (só leitura, botões travados)
+function projetosModo(r) {
+  const eu = !!r.meu, el = $('#j-trava'), outro = esc(r.nome || 'outra pessoa');
+  $('#j-form').classList.toggle('so-leitura', !eu);
+  $$('#j-form input, #j-form select, #j-form textarea, #j-form button').forEach(x => { if (['j-croqui', 'j-ver-proj', 'j-assumir'].includes(x.id)) return; x.disabled = !eu; });
+  ['#j-canc', '#j-salvar', '#j-ok'].forEach(b => $(b).title = eu ? '' : 'Processo em edição por ' + (r.nome || 'outra pessoa'));
+  $('#j-assumir').hidden = eu || SEM_TRAVA;
+  if (SEM_TRAVA) { el.hidden = true; return; }
+  el.hidden = false; el.className = 'trava ' + (eu ? 'eu' : 'outro');
+  el.innerHTML = eu ? `✎ Você está editando · desde ${horaTrava(r.desde)}` : `🔒 Em edição por <b>${outro}</b> desde ${horaTrava(r.desde)} · somente leitura`;
 }
 async function projetosAbrir(idSel) {
   PJ.fila = filaDe(1); const i = idSel ? PJ.fila.findIndex(p => p.id === idSel) : PJ.fila.findIndex(p => p.id === PJ.p?.id); PJ.at = Math.max(0, i);
   $('#j-form').hidden = !PJ.fila.length; $('#j-vazio').hidden = !!PJ.fila.length;
-  $('#j-fila').innerHTML = PJ.fila.map((p, i) => itemFila(p, i, PJ.at)).join('') || '<p class="vazio">Fila vazia.</p>';
-  $$('#j-fila .item').forEach(b => b.onclick = () => { PJ.at = +b.dataset.i; projetosAbrir(PJ.fila[PJ.at].id); });
-  if (!PJ.fila.length) return;
-  const p = await tarefa(() => carregarProcesso(PJ.fila[PJ.at].id)); if (!p) return; PJ.p = p;
+  const alvo = PJ.fila[PJ.at]?.id, seq = PJ.seq = (PJ.seq || 0) + 1;
+  if (TRAVA.id && TRAVA.id !== alvo) await travaLiberar();   // trocou de processo: solta o anterior
+  projetosFila();
+  if (!PJ.fila.length) { PJ.p = null; return; }
+  const [p, trava] = await Promise.all([tarefa(() => carregarProcesso(alvo)), travaMarcar(alvo, false)]); if (seq !== PJ.seq || !p) return; PJ.p = p;
+  projetosFila();
   $('#j-tit').textContent = p.numero; $('#j-sub').textContent = 'Recebido em ' + dataHora(p.etapa_desde) + ' · ' + (p.movimentos.find(m => m.acao === 'criar')?.por_nome ? 'cadastrado por ' + p.movimentos.find(m => m.acao === 'criar').por_nome : 'histórico da planilha');
   faixaDevolvido($('#j-dev'), p);
   $('#j-num').textContent = ({ '': 'Comum', C: 'Campo / Quadra', R: 'Reequilíbrio', RM: 'Remodelamento', V: 'Locais violentos', MP: 'Manutenção preventiva' }[p.tipo] || '') + ' · ' + p.numero;
@@ -76,6 +153,7 @@ async function projetosAbrir(idSel) {
   $('#j-arq-info').innerHTML = ja ? `✓ Já enviado: <button type="button" class="link-pdf" id="j-ver-proj">${esc(ja.nome)}</button> (${dataHora(ja.em)}). Escolha outro só se precisar mandar uma versão nova; o anterior fica no histórico.` : '';
   if (ja) $('#j-ver-proj').onclick = () => verArquivo(ja, 'Projeto ' + p.numero);
   $('#j-ok').textContent = p.ja_executado ? 'Entregar para Cadastro (já executado) →' : 'Entregar para Engenharia →';
+  projetosModo(trava);
 }
 function potLinha(w, q) {
   const tr = document.createElement('tr'), id = 'pw' + Math.random().toString(36).slice(2, 7);
