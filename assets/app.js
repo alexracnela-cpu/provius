@@ -2,9 +2,9 @@
 let TELA = 'todos';
 const TELAS = {
   todos: { abrir: todosAbrir }, pedido: { abrir: pedidoAbrir, setor: 'Engenharia' }, projetos: { abrir: projetosAbrir, setor: 'Projetos' },
-  exe: { abrir: execAbrir, setor: 'Engenharia' }, cad: { abrir: cadAbrir, setor: 'Cadastro' }, asb: { abrir: asbAbrir, setor: 'Projetos' }, saldo: { abrir: saldoAbrir }, usuarios: { abrir: usuariosAbrir, admin: true }
+  exe: { abrir: execAbrir, setor: 'Engenharia' }, cad: { abrir: cadAbrir, setor: 'Cadastro' }, asb: { abrir: asbAbrir, setor: 'Projetos' }, saldo: { abrir: saldoAbrir, gerencia: true }, usuarios: { abrir: usuariosAbrir, admin: true }
 };
-const pode = t => { const x = TELAS[t]; if (!x || !EU) return false; if (x.admin) return EU.admin; return !x.setor || EU.admin || EU.setor === x.setor; };
+const pode = t => { const x = TELAS[t]; if (!x || !EU) return false; if (x.admin) return EU.admin; if (x.gerencia) return EU.admin || EU.setor === 'Gerência'; /* Saldo de Itens: só administrador e gerência */ return !x.setor || EU.admin || EU.setor === x.setor; };
 
 // ---------- tema ----------
 function temaAtual() { const t = document.documentElement.dataset.theme; return t || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); }

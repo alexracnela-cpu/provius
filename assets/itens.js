@@ -47,7 +47,7 @@ function itensResumo(semProcesso) {
 // aba e selo com a contagem de itens em alerta
 function itensAba() {
   const a = document.querySelector('#abas .aba[data-tela="saldo"]'); if (!a) return;
-  if (SEM_ITENS) { a.hidden = true; return; }
+  if (SEM_ITENS || !pode('saldo')) { a.hidden = true; return; }
   if (!IT.ok) return;
   const n = itensResumo().filter(i => i.sit === 'est' || i.sit === 'ate').length, b = $('#sd-badge');
   b.hidden = !n; b.textContent = n; b.title = n + ' ' + (n === 1 ? 'item' : 'itens') + ' em atenção ou estourado';
