@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap">
-<link rel="stylesheet" href="assets/estilo.css?v=3">
+<link rel="stylesheet" href="assets/estilo.css?v=4">
 <script>try{var t=localStorage.getItem('provius-tema');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 </head>
 <body>
@@ -60,6 +60,7 @@
       <button class="aba" role="tab" data-tela="exe" data-setor="Engenharia">3 · Execução</button>
       <button class="aba" role="tab" data-tela="cad" data-setor="Cadastro">4 · Cadastro</button>
       <button class="aba" role="tab" data-tela="asb" data-setor="Projetos">5 · As built e AGEMAN</button>
+      <button class="aba" role="tab" data-tela="saldo">Saldo de Itens<span class="sd-badge" id="sd-badge" hidden></span></button>
       <button class="aba" role="tab" data-tela="usuarios" data-admin="1">⚙ Usuários</button>
     </div>
     <div class="usuario"><span id="u-eu"></span><button type="button" class="tema" id="tema" aria-label="Mudar tema"></button><button type="button" class="btn peq" id="trocar-senha" title="Trocar minha senha">🔑</button><button type="button" class="btn peq" id="sair">Sair</button></div>
@@ -95,6 +96,26 @@
   </div>
 </main>
 
+<!-- ===== SALDO DE ITENS (R-) ===== -->
+<main class="pagina sem-lado" id="tela-saldo" hidden>
+  <div style="min-width:0">
+    <div class="cab"><div><div class="etapa">Reequilíbrio · itens do contrato</div><h1>Saldo de Itens</h1><p class="sub" id="sd-sub"></p></div>
+      <button type="button" class="btn" id="sd-recarregar">↻ Atualizar</button></div>
+    <div id="sd-vazio" hidden><p class="faixa-dev" style="margin:0">Os itens de reequilíbrio ainda não estão no banco. Rode o arquivo provius-reequilibrio.sql no Supabase.</p></div>
+    <div id="sd-corpo">
+      <div class="sd-alerta" id="sd-alerta" hidden></div>
+      <div class="sd-kpis" id="sd-kpis"></div>
+      <div class="sd-grid">
+        <section class="secao sd-tab"><h2><span class="vis" role="group" aria-label="Filtrar por situação" id="sd-filtros"></span><span class="vis" role="group" aria-label="Ordenar" id="sd-ordem"><button type="button" data-o="item">Nº do item</button><button type="button" data-o="pct">Maior % usado</button></span></h2>
+          <div class="tab-wrap"><table class="sd-t-lista"><thead><tr><th>Item</th><th>Descrição</th><th class="num">Contratado</th><th class="num">Consumido</th><th class="num">Saldo</th><th>% usado</th><th>Situação</th></tr></thead><tbody id="sd-lista"></tbody></table></div>
+          <div class="sd-leg"><span><i class="k-nor"></i>Normal: abaixo de 80%</span><span><i class="k-ate"></i>Atenção: de 80% a 100%</span><span><i class="k-est"></i>Estourado: acima de 100%</span><span><i class="linha"></i>Linha de 80%</span></div>
+        </section>
+        <section class="secao sd-det" id="sd-det" aria-label="Detalhe do item"></section>
+      </div>
+    </div>
+  </div>
+</main>
+
 <!-- ===== 1 · PEDIDO ===== -->
 <main class="pagina sem-lado" id="tela-pedido" hidden>
   <div style="min-width:0;max-width:980px">
@@ -125,6 +146,7 @@
         <div class="campo largo"><span class="r">Croqui em PDF <em>*</em></span>
           <div class="upload" id="p-up-croqui"><span class="pdf-ico">PDF</span><span class="nome">Nenhum arquivo. Só PDF, até 10 MB.</span><label class="btn peq" for="p-arq-croqui">Escolher PDF</label><input type="file" id="p-arq-croqui" accept="application/pdf,.pdf" hidden></div></div>
         <div class="campo"><span class="r">Já executado?</span><div class="seg"><label><input type="radio" name="p-exec" value="nao" checked>Não</label><label><input type="radio" name="p-exec" value="sim">Sim</label></div><span class="ajuda">Se sim, o processo pula a etapa de execução.</span></div>
+        <div class="campo" id="p-aq-c" hidden><span class="r">Aquisição <em>*</em></span><div class="seg"><label><input type="radio" name="p-aq" value="sim">Adquirido</label><label><input type="radio" name="p-aq" value="nao">Não adquirido</label></div><span class="ajuda">Não adquirido volta para Projetos depois da execução: não passa pelo Cadastro nem vai à AGEMAN.</span></div>
         <div class="campo"><span class="r">Prioridade</span><div class="seg urg"><label><input type="radio" name="p-urg" value="nao" checked>Normal</label><label class="u"><input type="radio" name="p-urg" value="sim">🔴 Urgente</label></div><span class="ajuda">Urgente aparece no topo da fila de cada setor.</span></div>
         <div class="campo largo"><label class="r" for="p-obs">Observações</label><textarea id="p-obs" placeholder="algo que Projetos precise saber"></textarea></div>
       </div></section>
@@ -150,18 +172,25 @@
           <div class="campo"><span class="r">Zona</span><div class="zona on" id="j-zona"></div></div>
           <div class="campo"><span class="r">Prioridade</span><div class="seg urg"><label><input type="radio" name="j-urg" value="nao">Normal</label><label class="u"><input type="radio" name="j-urg" value="sim">🔴 Urgente</label></div></div>
           <div class="campo"><span class="r">Já executado?</span><div class="seg"><label><input type="radio" name="j-exec" value="nao">Não</label><label><input type="radio" name="j-exec" value="sim">Sim</label></div></div>
+          <div class="campo" id="j-aq-c" hidden><span class="r">Aquisição (veio do croqui)</span><div class="zona on" id="j-aq"></div></div>
           <div class="campo largo" id="j-obsped-c" hidden><span class="r">Observação da Engenharia</span><div class="zona on" id="j-obsped"></div></div>
         </div></section>
-      <section class="secao"><h2>Potência aplicada</h2>
+      <section class="secao" id="j-sec-pot"><h2>Potência aplicada</h2>
         <div class="tab-wrap" style="padding-top:10px"><table><thead><tr><th>Potência</th><th class="num">Quantidade</th><th></th></tr></thead><tbody id="j-pot"></tbody></table></div>
         <div class="total"><button type="button" class="btn peq" id="j-addpot">+ Adicionar potência</button><div style="display:flex;align-items:baseline;gap:8px"><span class="ajuda">Total de pontos</span><span class="numero" id="j-tot">0</span></div></div>
       </section>
-      <section class="secao"><h2>Pontos por modalidade</h2>
+      <section class="secao" id="j-sec-mod"><h2>Pontos por modalidade</h2>
         <div class="mods">
           <div class="campo"><label class="r" for="j-cv">Crescimento vegetativo</label><input type="number" min="0" id="j-cv" class="j-mod"></div>
           <div class="campo"><label class="r" for="j-mo">Modernização</label><input type="number" min="0" id="j-mo" class="j-mod"></div>
           <div class="campo"><label class="r" for="j-de">Iluminação de destaque</label><input type="number" min="0" id="j-de" class="j-mod"></div>
         </div><div class="conf" id="j-conf"></div></section>
+      <section class="secao" id="j-sec-itens" hidden><h2>Itens de reequilíbrio <span style="text-transform:none;letter-spacing:0;font-family:var(--f-corpo);font-size:13px">abatem do saldo do contrato quando você entregar</span></h2>
+        <div class="tab-wrap" style="padding-top:10px"><table class="it-tab"><thead><tr><th>Item</th><th class="num">Quantidade</th><th class="num">Saldo atual</th><th class="num">Saldo após</th><th class="num">% após</th><th>Situação</th><th></th></tr></thead><tbody id="j-itens"></tbody></table></div>
+        <div class="total"><button type="button" class="btn peq" id="j-additem">+ Adicionar item</button><div style="display:flex;align-items:baseline;gap:8px"><span class="ajuda">Valor deste projeto (base dez/19)</span><span class="numero" id="j-itval">R$ 0</span></div></div>
+        <div class="it-avisos" id="j-avisos"></div>
+        <div class="grade" id="j-just-c" hidden><div class="campo largo"><label class="r" for="j-just">Justificativa para usar item estourado <em>*</em></label><textarea id="j-just" placeholder="Explique por que o item será usado acima do contratado"></textarea><span class="ajuda">Fica registrada no histórico do processo.</span></div></div>
+      </section>
       <section class="secao"><h2>Entrega do projeto</h2><div class="grade">
         <div class="campo largo"><span class="r">Projeto em PDF <em>*</em></span>
           <div class="upload" id="j-up"><span class="pdf-ico">PDF</span><span class="nome">Nenhum arquivo. Só PDF, até 10 MB.</span><label class="btn peq" for="j-arq">Escolher PDF</label><input type="file" id="j-arq" accept="application/pdf,.pdf" hidden></div>
@@ -364,7 +393,8 @@
 <script src="assets/config.js?v=2"></script>
 <script src="assets/comum.js?v=2"></script>
 <script src="assets/documentos.js?v=2"></script>
-<script src="assets/telas.js?v=2"></script>
-<script src="assets/app.js?v=2"></script>
+<script src="assets/itens.js?v=3"></script>
+<script src="assets/telas.js?v=3"></script>
+<script src="assets/app.js?v=3"></script>
 </body>
 </html>

@@ -2,7 +2,7 @@
 let TELA = 'todos';
 const TELAS = {
   todos: { abrir: todosAbrir }, pedido: { abrir: pedidoAbrir, setor: 'Engenharia' }, projetos: { abrir: projetosAbrir, setor: 'Projetos' },
-  exe: { abrir: execAbrir, setor: 'Engenharia' }, cad: { abrir: cadAbrir, setor: 'Cadastro' }, asb: { abrir: asbAbrir, setor: 'Projetos' }, usuarios: { abrir: usuariosAbrir, admin: true }
+  exe: { abrir: execAbrir, setor: 'Engenharia' }, cad: { abrir: cadAbrir, setor: 'Cadastro' }, asb: { abrir: asbAbrir, setor: 'Projetos' }, saldo: { abrir: saldoAbrir }, usuarios: { abrir: usuariosAbrir, admin: true }
 };
 const pode = t => { const x = TELAS[t]; if (!x || !EU) return false; if (x.admin) return EU.admin; return !x.setor || EU.admin || EU.setor === x.setor; };
 
@@ -50,7 +50,7 @@ async function entrar(senhaOk) {
   $$('#abas .aba').forEach(a => a.hidden = !pode(a.dataset.tela));
   mostra('#app'); pintaTema();
   const { data: b } = await sb.from('bairros').select('*'); BAIRROS = {}; (b || []).forEach(x => BAIRROS[x.nome] = x.zona);
-  await recarregar();
+  await recarregar(); itensCarregar().catch(e => console.error(e));   // selo da aba Saldo de Itens
   const inicial = ({ Engenharia: 'exe', Projetos: 'projetos', Cadastro: 'cad' })[EU.setor] || 'todos';
   abrirTela(TELA_HASH() || inicial);
 }
@@ -129,6 +129,7 @@ function trilha(d) {
 }
 function frase(d) {
   if (d.cancelado) return '<span class="quem">Cancelado</span><span>Projeto cancelado.</span>';
+  if (d.etapa === 6 && d.tipo === 'R' && !d.enviado_ageman) return '<span class="quem">Concluído</span><span>Concluído em Projetos (R- não adquirido, não vai à AGEMAN).</span>';
   if (d.etapa === 6) return `<span class="quem">Concluído</span><span>Enviado à AGEMAN${d.enviado_ageman ? ' em <strong>' + dataBR(d.enviado_ageman) + '</strong>' : ''}.</span>`;
   if (d.etapa === 5) return '<span class="quem">Projetos</span><span>Pronto. Aguardando envio à AGEMAN.</span>';
   const dd = diasDesde(d.etapa_desde);
@@ -148,7 +149,7 @@ const ROT_ARQ = { pedido: 'Pedido', croqui: 'Croqui', projeto: 'Projeto', correc
 async function detalhe(id) {
   const p = await tarefa(() => carregarProcesso(id)); if (!p) return;
   $('#det-tit').textContent = p.numero + (p.cancelado ? ' · CANCELADO' : '');
-  const info = [['Serviço', p.tipo_servico || '—'], ['Logradouro', p.logradouro], ['Bairro / zona', (p.bairro || '') + ' · ' + (p.zona || '')], ['Pontos', p.total_pontos], ['Encaminhamento', p.ref_pedido || '—'], ['Etapa', p.cancelado ? 'Cancelado' : p.etapa === 6 ? 'Enviado à AGEMAN em ' + dataBR(p.enviado_ageman) : ETAPAS[p.etapa].setor + ' · ' + ETAPAS[p.etapa].nome]].map(([k, v]) => `<div><span class="ajuda">${k}</span><br><b>${esc(v)}</b></div>`).join('');
+  const info = [...(p.tipo === 'R' ? [['Aquisição', p.adquirido === true ? 'Adquirido' : p.adquirido === false ? 'Não adquirido' : '—']] : []), ['Serviço', p.tipo_servico || '—'], ['Logradouro', p.logradouro], ['Bairro / zona', (p.bairro || '') + ' · ' + (p.zona || '')], ['Pontos', p.total_pontos], ['Encaminhamento', p.ref_pedido || '—'], ['Etapa', p.cancelado ? 'Cancelado' : p.etapa === 6 ? 'Enviado à AGEMAN em ' + dataBR(p.enviado_ageman) : ETAPAS[p.etapa].setor + ' · ' + ETAPAS[p.etapa].nome]].map(([k, v]) => `<div><span class="ajuda">${k}</span><br><b>${esc(v)}</b></div>`).join('');
   const passos = `<ol class="passos">${[1, 2, 3, 4, 5, 6].map(e => `<li class="${p.cancelado ? '' : e < p.etapa || (e === 6 && p.etapa === 6) ? 'feito' : e === p.etapa ? 'agora' : ''}"><span><b>${ETAPAS[e].setor} · ${ETAPAS[e].nome}</b><small>${e === p.etapa && e < 6 && !p.cancelado ? 'está aqui desde ' + dataBR(p.etapa_desde) : ''}</small></span></li>`).join('')}</ol>`;
   const arqs = p.arquivos.length ? `<div class="arq-lista" style="padding:0">${p.arquivos.map(a => `<button type="button" data-a="${a.id}"><b>${/\.pdf$/i.test(a.caminho) ? 'PDF' : 'FOTO'}</b>${esc(ROT_ARQ[a.tipo] || a.tipo)} · ${esc(a.nome || '')}<small>${esc(a.por_nome || '')} · ${dataBR(a.em)}</small></button>`).join('')}</div>` : '<p class="ajuda" style="margin:0">Sem arquivos (processo do histórico da planilha).</p>';
   const hist = p.movimentos.length ? `<ul class="hist" style="padding:0">${p.movimentos.map(m => `<li><span>${dataBR(m.em)}</span><b style="font-weight:500">${esc(m.por_nome || '')}: ${esc(textoMov(m))}</b></li>`).join('')}</ul>` : '<p class="ajuda" style="margin:0">Sem movimentos registrados (histórico da planilha).</p>';
@@ -239,7 +240,7 @@ $('#dv-ok').onclick = confirmaDevolver; $('#c-ok').onclick = confirmaCancelar;
 (async function iniciar() {
   pintaTema();
   if (!CONFIGURADO) { aviso('O Provius ainda não foi ligado ao banco de dados. Preencha o arquivo assets/config.js com os dados do Supabase.'); return; }
-  pedidoIniciar(); projetosIniciar(); execIniciar(); cadIniciar(); asbIniciar(); relIniciar(); usuariosIniciar();
+  pedidoIniciar(); projetosIniciar(); execIniciar(); cadIniciar(); asbIniciar(); relIniciar(); usuariosIniciar(); saldoIniciar();
   const erroLink = /error_code=([^&]+)/.exec(HASH0)?.[1], tipoLink = /type=(invite|recovery|signup|magiclink)/.exec(HASH0)?.[1];
   if (erroLink) { history.replaceState(null, '', location.pathname); aviso(/expired/.test(erroLink) ? 'Este link venceu. Peça ao administrador um novo convite (ou use "Esqueci a senha").' : 'O link não é mais válido. Peça um novo convite ao administrador.', true); return; }
   sb.auth.onAuthStateChange((ev, ses) => { if (ev === 'PASSWORD_RECOVERY') telaSenha('recovery', ses?.user?.email); });

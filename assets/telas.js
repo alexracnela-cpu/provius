@@ -5,7 +5,7 @@ const PED = { prox: {} };
 function pedidoIniciar() {
   caixaPdf('#p-arq-croqui', '#p-up-croqui'); caixaPdf('#p-arq-ped', '#p-up-ped');
   $('#p-bairro').onchange = () => { const z = BAIRROS[$('#p-bairro').value]; $('#p-zona').textContent = z || 'escolha o bairro'; $('#p-zona').classList.toggle('on', !!z); };
-  $$('input[name=tipo]').forEach(r => r.onchange = pedidoNumero);
+  $$('input[name=tipo]').forEach(r => r.onchange = () => { pedidoNumero(); $('#p-aq-c').hidden = $('input[name=tipo]:checked').value !== 'R'; });
   $('#f-ped').onsubmit = async e => {
     e.preventDefault(); $$('#f-ped .campo').forEach(c => c.classList.remove('invalido'));
     const falta = [];
@@ -13,6 +13,8 @@ function pedidoIniciar() {
     if (!$('#p-logr').value.trim()) { falta.push('logradouro'); $('#p-logr').closest('.campo').classList.add('invalido'); }
     if (!$('#p-bairro').value) { falta.push('bairro'); $('#p-bairro').closest('.campo').classList.add('invalido'); }
     const croq = $('#p-up-croqui')._arqs[0]; if (!croq) { falta.push('croqui'); $('#p-up-croqui')._erro('Anexe o croqui em PDF.'); }
+    const ehR = $('input[name=tipo]:checked').value === 'R', aq = $('input[name=p-aq]:checked')?.value;
+    if (ehR && !aq) { falta.push('adquirido ou não adquirido'); $('#p-aq-c').classList.add('invalido'); }
     if (falta.length) { toast('Faltam: ' + falta.join(', '), true); return; }
     const r = await tarefa(async () => {
       const pasta = 'novos/' + hojeISO().slice(0, 7);
@@ -25,9 +27,11 @@ function pedidoIniciar() {
     });
     if (!r) return;
     const urg = $('input[name=p-urg]:checked').value === 'sim';
-    if (urg) await marcarUrgente(r.id ?? (await sb.from('processos').select('id').eq('numero', r.numero).single()).data?.id, true);
+    const idNovo = (urg || ehR) ? (r.id ?? (await sb.from('processos').select('id').eq('numero', r.numero).single()).data?.id) : null;
+    if (urg) await marcarUrgente(idNovo, true);
+    if (ehR) await marcarAquisicao(idNovo, aq === 'sim');
     toast('Processo ' + r.numero + (urg ? ' (URGENTE)' : '') + ' cadastrado e entregue para Projetos');
-    $('#f-ped').reset(); $('#p-up-croqui')._limpa(); $('#p-up-ped')._limpa(); $('#p-zona').textContent = 'escolha o bairro'; $('#p-zona').classList.remove('on'); $('#p-data').value = hojeISO();
+    $('#f-ped').reset(); $('#p-aq-c').hidden = true; $('#p-aq-c').classList.remove('invalido'); $('#p-up-croqui')._limpa(); $('#p-up-ped')._limpa(); $('#p-zona').textContent = 'escolha o bairro'; $('#p-zona').classList.remove('on'); $('#p-data').value = hojeISO();
     await recarregar(); pedidoNumero();
   };
 }
@@ -36,6 +40,12 @@ async function marcarUrgente(id, urg) {
   if (!id) return false;
   try { await rpc('marcar_urgente', { p_id: id, p_urgente: !!urg }); return true; }
   catch (e) { console.error(e); toast('Não consegui gravar a urgência. Falta rodar o SQL provius-urgente.sql no Supabase.', true); return false; }
+}
+// R-: adquirido ou não adquirido (define se o processo passa pelo Cadastro e vai à AGEMAN)
+async function marcarAquisicao(id, adquirido) {
+  if (!id) return false;
+  try { await rpc('marcar_aquisicao', { p_id: id, p_adquirido: !!adquirido }); return true; }
+  catch (e) { console.error(e); toast('Não consegui gravar se é adquirido. Falta rodar o SQL provius-reequilibrio.sql no Supabase.', true); return false; }
 }
 async function pedidoAbrir() {
   if (!$('#p-bairro').options.length) selectBairros($('#p-bairro'));
@@ -109,6 +119,7 @@ function projetosIniciar() {
   caixaPdf('#j-arq', '#j-up');
   $('#j-bairro').onchange = () => $('#j-zona').textContent = BAIRROS[$('#j-bairro').value] || '';
   $('#j-addpot').onclick = () => { potLinha(50, ''); potSoma(); };
+  itensProjetoIniciar();
   $$('.j-mod').forEach(i => i.oninput = potSoma);
   $('#j-croqui').onclick = () => verArquivo(ultimoArquivo(PJ.p, 'croqui'), 'Croqui ' + PJ.p.numero);
   $('#j-salvar').onclick = () => projetosGravar(false);
@@ -161,7 +172,8 @@ async function projetosAbrir(idSel) {
   const ja = p.arquivos.filter(a => a.tipo === 'projeto' && new Date(a.em) >= new Date(p.etapa_desde)).slice(-1)[0];
   $('#j-arq-info').innerHTML = ja ? `✓ Já enviado: <button type="button" class="link-pdf" id="j-ver-proj">${esc(ja.nome)}</button> (${dataHora(ja.em)}). Escolha outro só se precisar mandar uma versão nova; o anterior fica no histórico.` : '';
   if (ja) $('#j-ver-proj').onclick = () => verArquivo(ja, 'Projeto ' + p.numero);
-  $('#j-ok').textContent = p.ja_executado ? 'Entregar para Cadastro (já executado) →' : 'Entregar para Engenharia →';
+  $('#j-ok').textContent = p.ja_executado ? (p.tipo === 'R' && p.adquirido === false ? 'Entregar (já executado) →' : 'Entregar para Cadastro (já executado) →') : 'Entregar para Engenharia →';
+  await itensProjeto(p); if (seq !== PJ.seq) return;
   projetosModo(trava);
 }
 function potLinha(w, q) {
@@ -178,9 +190,11 @@ function potSoma() {
 }
 async function projetosGravar(entregar) {
   const p = PJ.p; if (!p) return;
+  const ehR = p.tipo === 'R';   // R-: no lugar de potências e modalidades vão os itens de reequilíbrio
   const campos = { tipo_servico: $('#j-serv').value, origem: $('#j-origem').value, ref_pedido: $('#j-ref').value.trim(), logradouro: $('#j-logr').value.trim(),
-    bairro: $('#j-bairro').value, ja_executado: $('input[name=j-exec]:checked')?.value === 'sim', potencias: potLer(),
-    mod_cv: +$('#j-cv').value || 0, mod_mod: +$('#j-mo').value || 0, mod_dest: +$('#j-de').value || 0, obs_projetos: $('#j-obs').value.trim() };
+    bairro: $('#j-bairro').value, ja_executado: $('input[name=j-exec]:checked')?.value === 'sim', potencias: ehR ? {} : potLer(),
+    mod_cv: ehR ? 0 : +$('#j-cv').value || 0, mod_mod: ehR ? 0 : +$('#j-mo').value || 0, mod_dest: ehR ? 0 : +$('#j-de').value || 0, obs_projetos: $('#j-obs').value.trim() };
+  if (ehR) { const ok = await tarefa(() => itensGravar(p, entregar)); if (!ok) return; }
   const arq = $('#j-up')._arqs[0];
   const urg = $('input[name=j-urg]:checked')?.value === 'sim';
   if (urg !== !!p.urgente && await marcarUrgente(p.id, urg)) p.urgente = urg;
@@ -206,7 +220,8 @@ function execIniciar() {
   $('#x-dev').onclick = () => abrirDevolver(XE.p, [1]);
   $('#x-salvar').onclick = () => execGravar(false); $('#x-ok').onclick = () => execGravar(true);
 }
-function execMostra() { const s = $('input[name=x-sit]:checked').value, c = $('input[name=x-cor]:checked').value; $('#x-parc-c').hidden = s !== 'parcial'; $('#x-cor-c').hidden = c !== 'sim'; $('#x-ok').textContent = s === 'parcial' ? 'Salvar execução parcial' : 'Entregar para Cadastro →'; }
+const naoAdq = p => !!p && p.tipo === 'R' && p.adquirido === false;   // R- não adquirido: pula o Cadastro e não vai à AGEMAN
+function execMostra() { const s = $('input[name=x-sit]:checked').value, c = $('input[name=x-cor]:checked').value; $('#x-parc-c').hidden = s !== 'parcial'; $('#x-cor-c').hidden = c !== 'sim'; $('#x-ok').textContent = s === 'parcial' ? 'Salvar execução parcial' : naoAdq(XE.p) ? 'Entregar para Projetos (não adquirido) →' : 'Entregar para Cadastro →'; }
 async function execAbrir(idSel) {
   XE.fila = filaDe(2); const i = idSel ? XE.fila.findIndex(p => p.id === idSel) : XE.fila.findIndex(p => p.id === XE.p?.id); XE.at = Math.max(0, i);
   $('#x-form').hidden = !XE.fila.length; $('#x-vazio').hidden = !!XE.fila.length;
@@ -230,7 +245,7 @@ async function execAbrir(idSel) {
 async function execGravar(entregar) {
   const p = XE.p; if (!p) return; const sit = $('input[name=x-sit]:checked').value, cor = $('input[name=x-cor]:checked').value;
   if (sit === 'parcial' && !$('#x-parc').value.trim()) { $('#x-parc').closest('.campo').classList.add('invalido'); toast('Diga o que ficou faltando', true); return; }
-  if (entregar && sit === 'nao') { toast('Marque como Executado para entregar ao Cadastro', true); return; }
+  if (entregar && sit === 'nao') { toast('Marque como Executado para entregar ' + (naoAdq(p) ? 'a Projetos' : 'ao Cadastro'), true); return; }
   if (cor === 'sim' && !$('#x-cor-txt').value.trim()) { $('#x-cor-txt').closest('.campo').classList.add('invalido'); toast('Descreva as correções de campo', true); return; }
   const campos = { exec_situacao: sit, executado_em: $('#x-data').value, equipe: $('#x-equipe').value.trim(), exec_parcial: sit === 'parcial' ? $('#x-parc').value.trim() : '', correcoes: cor === 'sim' ? $('#x-cor-txt').value.trim() : '' };
   const arqs = $('#x-up')._arqs.slice(); const ent = entregar && sit === 'executado';
@@ -241,7 +256,7 @@ async function execGravar(entregar) {
     await rpc('salvar', { p_id: p.id, p_campos: campos }); return { salvo: true };
   });
   if (!r) return;
-  toast(r.salvo ? (sit === 'parcial' ? 'Execução parcial salva. O processo continua na sua fila.' : 'Alterações salvas') : p.numero + ' entregue para o Cadastro');
+  toast(r.salvo ? (sit === 'parcial' ? 'Execução parcial salva. O processo continua na sua fila.' : 'Alterações salvas') : p.numero + ' entregue para ' + (ETAPAS[r.etapa]?.setor || 'o Cadastro'));
   await recarregar(); execAbrir(r.salvo ? p.id : null);
 }
 
@@ -304,7 +319,7 @@ function asbIniciar() {
   $('#v-cheia').onclick = async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else { await $('#v-area').requestFullscreen(); setTimeout(AB.visor.desenha, 150); } } catch (e) { toast('Tela cheia não disponível aqui', true); } };
   document.addEventListener('fullscreenchange', () => setTimeout(AB.visor.desenha, 150));
   $('#v-print').onclick = () => { if (AB.visor.bytes) abrirBlob(new Blob([AB.visor.bytes], { type: 'application/pdf' })); };
-  $('#a-dev').onclick = () => abrirDevolver(AB.p, [3, 2, 1]);
+  $('#a-dev').onclick = () => abrirDevolver(AB.p, naoAdq(AB.p) ? [2, 1] : [3, 2, 1]);
   $('#a-canc').onclick = () => abrirCancelar(AB.p);
   $('#a-salvar').onclick = () => asbGravar(false); $('#a-ok').onclick = () => asbGravar(true);
   $('#ag-todos').onchange = e => { AB.sel = e.target.checked ? new Set(filaDe(5).map(d => d.id)) : new Set(); agLista(); };
@@ -331,6 +346,7 @@ async function asbAbrir(idSel) {
   if (pl) $('#a-link').onclick = () => $('#v-area').scrollIntoView({ behavior: 'smooth' });
   $('#a-obs-box').hidden = !p.obs_cadastro; $('#a-obs-cad').textContent = p.obs_cadastro || '';
   $('#a-hist').innerHTML = p.movimentos.map(m => `<li><span>${dataBR(m.em)}</span><b style="font-weight:500">${esc(m.por_nome || '')}: ${esc(textoMov(m))}</b></li>`).join('') || '<li><span></span><b style="font-weight:500">Histórico da planilha (sem movimentos registrados).</b></li>';
+  $('#a-ok').textContent = naoAdq(p) ? 'Concluir processo (não adquirido, sem AGEMAN) ✓' : 'Concluir as built → pronto p/ AGEMAN';
   $('#a-pts').textContent = p.total_pontos + ' pontos'; $('#a-obs').value = p.obs_asbuilt || ''; $('#a-up')._limpa();
   AB.visor.limpa(); $('#v-fonte').textContent = pl ? 'Carregando…' : 'Sem PDF de plaquetas neste processo.';
   if (pl) tarefa(async () => { await AB.visor.abrir(await bytesDe(pl.caminho), pl.nome); $('#v-fonte').textContent = pl.nome + ' · enviado por ' + (pl.por_nome || '') + ' em ' + dataHora(pl.em); });
@@ -344,7 +360,7 @@ async function asbGravar(entregar) {
     await rpc('salvar', { p_id: p.id, p_campos: campos }); return { salvo: true };
   });
   if (!r) return;
-  toast(r.salvo ? 'Alterações salvas' : p.numero + ' pronto para enviar à AGEMAN');
+  toast(r.salvo ? 'Alterações salvas' : naoAdq(p) ? p.numero + ' concluído (não adquirido, não vai à AGEMAN)' : p.numero + ' pronto para enviar à AGEMAN');
   await recarregar(); asbAbrir(r.salvo ? p.id : null);
 }
 function agLista() {
@@ -416,6 +432,8 @@ function textoMov(m) {
   if (m.acao === 'devolver') return 'devolveu para ' + (ETAPAS[m.para_etapa]?.setor || '') + ' · ' + (m.motivo || '') + ': ' + (m.texto || '');
   if (m.acao === 'cancelar') return 'cancelou · ' + (m.motivo || '') + ': ' + (m.texto || '');
   if (m.acao === 'reativar') return 'reativou o processo';
+  if (m.acao === 'concluir') return m.texto || 'concluiu o processo (não adquirido, sem AGEMAN)';
+  if (m.acao === 'itens') return m.texto || 'lançou os itens de reequilíbrio';
   if (m.acao === 'enviar') return m.texto || 'enviou à AGEMAN';
   if (m.acao === 'editar') return (m.texto || 'alterou dados').replace(/_/g, ' ');
   return m.texto || m.acao;
