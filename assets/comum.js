@@ -111,7 +111,7 @@ function abrirBlob(blob) { const u = URL.createObjectURL(blob); window.open(u, '
 // detalhes completos de um processo
 // MP- (manutenção preventiva) era só para desenhar: não passa pelo as built nem vai à AGEMAN.
 // Os que estavam parados no as built (etapa 4) ou prontos p/ AGEMAN (etapa 5) contam como concluídos.
-function normMP(d) { if (d && d.tipo === 'MP' && !d.cancelado && !d.enviado_ageman && (d.etapa === 4 || d.etapa === 5)) { d.etapa = 6; d.so_desenho = true; } return d; }
+function normMP(d) { if (d && d.tipo === 'MP' && !d.cancelado && !d.enviado_ageman && d.etapa >= 4) { d.etapa = 6; d.so_desenho = true; } return d; }
 async function carregarProcesso(id) {
   const [p, a, m] = await Promise.all([
     sb.from('processos').select('*').eq('id', id).single(),
