@@ -10,6 +10,8 @@ const IT = { ok: false, cat: [], porCod: {}, mensal: [], sis: [], hist: [], carr
 let SEM_ITENS = false;   // banco ainda sem as tabelas de itens: o resto do sistema funciona sem elas
 const IT_ATENCAO = 0.8;
 const IT_PLANILHA_ATE = 'set/2026';   // último mês realizado da planilha do contrato carregada no banco
+// prazo do contrato após o reequilíbrio: 25 anos (300 meses), de abr/2020 a mar/2045
+const IT_CONTRATO_INI = new Date(2020, 3, 1), IT_CONTRATO_MESES = 25 * 12;
 const IT_SIT = { est: { rot: 'Estourado', cls: 'est' }, ate: { rot: 'Atenção', cls: 'ate' }, nor: { rot: 'Normal', cls: 'nor' }, sem: { rot: 'Sem uso', cls: 'sem' } };
 const fmtQ = n => Number(n || 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 });
 const fmtR = n => 'R$ ' + Number(n || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 });
@@ -66,7 +68,7 @@ function saldoDesenha() {
   const L = itensResumo(), cont = { est: 0, ate: 0, nor: 0 };
   L.forEach(i => { if (i.sit === 'est') cont.est++; else if (i.sit === 'ate') cont.ate++; else cont.nor++; });
   const vC = L.reduce((a, i) => a + i.valor, 0), vT = L.reduce((a, i) => a + i.contratado * Number(i.preco || 0), 0);
-  $('#sd-sub').textContent = 'Contrato de 15 anos (abr/2020 a mar/2035) · realizado até ' + IT_PLANILHA_ATE + ' pela planilha do contrato + projetos R- entregues no Provius · valores base dez/19';
+  $('#sd-sub').textContent = 'Contrato de 25 anos (abr/2020 a mar/2045) · realizado até ' + IT_PLANILHA_ATE + ' pela planilha do contrato + projetos R- entregues no Provius · valores base dez/19';
 
   // alertas
   const al = L.filter(i => i.sit === 'est' || i.sit === 'ate').sort((a, b) => b.pct - a.pct);
@@ -78,11 +80,11 @@ function saldoDesenha() {
   }
 
   // resumo
-  const ini = new Date(2020, 3, 1), hoje = new Date();
-  const meses = Math.max(0, Math.min(180, (hoje.getFullYear() - ini.getFullYear()) * 12 + hoje.getMonth() - ini.getMonth() + 1));
+  const ini = IT_CONTRATO_INI, hoje = new Date(), M = IT_CONTRATO_MESES;
+  const meses = Math.max(0, Math.min(M, (hoje.getFullYear() - ini.getFullYear()) * 12 + hoje.getMonth() - ini.getMonth() + 1));
   const kpi = (rot, val, barra, txt, cls) => `<div class="sd-kpi"><span class="r">${rot}</span><b class="${cls || ''}">${val}</b>${barra != null ? `<span class="sd-bar"><i style="width:${Math.min(100, barra)}%"></i></span>` : ''}<span class="ajuda">${txt}</span></div>`;
   $('#sd-kpis').innerHTML = kpi('Valor consumido', fmtMi(vC), vT ? vC / vT * 100 : 0, (vT ? Math.round(vC / vT * 100) : 0) + '% de ' + fmtMi(vT) + ' contratados') +
-    kpi('Prazo do contrato decorrido', meses + ' de 180 meses', meses / 180 * 100, Math.round(meses / 180 * 100) + '% do prazo') +
+    kpi('Prazo do contrato decorrido', meses + ' de ' + M + ' meses', meses / M * 100, Math.round(meses / M * 100) + '% do prazo · faltam ' + (M - meses) + ' meses') +
     kpi('Itens estourados', cont.est, null, 'Acima de 100% do contratado', cont.est ? 'k-est' : '') +
     kpi('Itens em atenção', cont.ate, null, 'De 80% a 100% do contratado', cont.ate ? 'k-ate' : '');
 
