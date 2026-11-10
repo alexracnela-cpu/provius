@@ -2,7 +2,7 @@
 let TELA = 'todos';
 const TELAS = {
   todos: { abrir: todosAbrir }, pedido: { abrir: pedidoAbrir, setor: 'Engenharia' }, projetos: { abrir: projetosAbrir, setor: 'Projetos' },
-  exe: { abrir: execAbrir, setor: 'Engenharia' }, cad: { abrir: cadAbrir, setor: 'Cadastro' }, asb: { abrir: asbAbrir, setor: 'Projetos' }, saldo: { abrir: saldoAbrir, gerencia: true }, usuarios: { abrir: usuariosAbrir, admin: true }
+  exe: { abrir: execAbrir, setor: 'Engenharia' }, cad: { abrir: cadAbrir, setor: 'Cadastro' }, asb: { abrir: asbAbrir, setor: 'Projetos' }, saldo: { abrir: saldoAbrir, gerencia: true }, usuarios: { abrir: usuariosAbrir, admin: true }, banco: { abrir: bancoAbrir, admin: true }
 };
 const pode = t => { const x = TELAS[t]; if (!x || !EU) return false; if (x.admin) return EU.admin; if (x.gerencia) return EU.admin || EU.setor === 'Gerência'; /* Saldo de Itens: só administrador e gerência */ return !x.setor || EU.admin || EU.setor === x.setor; };
 
@@ -51,6 +51,7 @@ async function entrar(senhaOk) {
   mostra('#app'); pintaTema();
   const { data: b } = await sb.from('bairros').select('*'); BAIRROS = {}; (b || []).forEach(x => BAIRROS[x.nome] = x.zona);
   await recarregar(); itensCarregar().catch(e => console.error(e));   // selo da aba Saldo de Itens
+  bancoAba();   // selo da aba Banco de dados (só administrador) e foto diária do uso
   const inicial = ({ Engenharia: 'exe', Projetos: 'projetos', Cadastro: 'cad' })[EU.setor] || 'todos';
   abrirTela(TELA_HASH() || inicial);
 }
@@ -241,7 +242,7 @@ $('#dv-ok').onclick = confirmaDevolver; $('#c-ok').onclick = confirmaCancelar;
 (async function iniciar() {
   pintaTema();
   if (!CONFIGURADO) { aviso('O Provius ainda não foi ligado ao banco de dados. Preencha o arquivo assets/config.js com os dados do Supabase.'); return; }
-  pedidoIniciar(); projetosIniciar(); execIniciar(); cadIniciar(); asbIniciar(); relIniciar(); usuariosIniciar(); saldoIniciar();
+  pedidoIniciar(); projetosIniciar(); execIniciar(); cadIniciar(); asbIniciar(); relIniciar(); usuariosIniciar(); saldoIniciar(); bancoIniciar();
   const erroLink = /error_code=([^&]+)/.exec(HASH0)?.[1], tipoLink = /type=(invite|recovery|signup|magiclink)/.exec(HASH0)?.[1];
   if (erroLink) { history.replaceState(null, '', location.pathname); aviso(/expired/.test(erroLink) ? 'Este link venceu. Peça ao administrador um novo convite (ou use "Esqueci a senha").' : 'O link não é mais válido. Peça um novo convite ao administrador.', true); return; }
   sb.auth.onAuthStateChange((ev, ses) => { if (ev === 'PASSWORD_RECOVERY') telaSenha('recovery', ses?.user?.email); });
