@@ -172,7 +172,7 @@ async function projetosAbrir(idSel) {
   const ja = p.arquivos.filter(a => a.tipo === 'projeto' && new Date(a.em) >= new Date(p.etapa_desde)).slice(-1)[0];
   $('#j-arq-info').innerHTML = ja ? `✓ Já enviado: <button type="button" class="link-pdf" id="j-ver-proj">${esc(ja.nome)}</button> (${dataHora(ja.em)}). Escolha outro só se precisar mandar uma versão nova; o anterior fica no histórico.` : '';
   if (ja) $('#j-ver-proj').onclick = () => verArquivo(ja, 'Projeto ' + p.numero);
-  $('#j-ok').textContent = p.ja_executado ? (p.tipo === 'R' && p.adquirido === false ? 'Entregar (já executado) →' : 'Entregar para Cadastro (já executado) →') : 'Entregar para Engenharia →';
+  $('#j-ok').textContent = 'Entregar para Engenharia →';   // já executado ou não, o projeto sempre vai para a Engenharia
   await itensProjeto(p); if (seq !== PJ.seq) return;
   projetosModo(trava);
 }
@@ -204,7 +204,7 @@ async function projetosGravar(entregar) {
     await rpc('salvar', { p_id: p.id, p_campos: campos }); return { salvo: true };
   });
   if (!r) { if (arq) projetosAbrir(p.id); return; }
-  toast(r.salvo ? 'Alterações salvas' : p.numero + ' entregue para ' + ETAPAS[r.etapa].setor);
+  toast(r.salvo ? 'Alterações salvas' : p.numero + ' entregue para Engenharia');
   await recarregar(); projetosAbrir(r.salvo ? p.id : null);
 }
 
@@ -236,7 +236,7 @@ async function execAbrir(idSel) {
     ['Projeto', proj ? `<button class="link-pdf" type="button" id="x-link">${esc(proj.nome)}</button>` : 'sem PDF (histórico)']].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
   if (proj) $('#x-link').onclick = () => $('#x-ver').click(); $('#x-ver').disabled = !proj;
   $('#x-obs-box').hidden = !p.obs_projetos; $('#x-obs').textContent = p.obs_projetos || '';
-  const sit = p.exec_situacao || 'nao'; $$('input[name=x-sit]').forEach(r => r.checked = r.value === sit);
+  const sit = p.exec_situacao || (p.ja_executado ? 'executado' : 'nao'); $$('input[name=x-sit]').forEach(r => r.checked = r.value === sit);
   $$('input[name=x-cor]').forEach(r => r.checked = r.value === (p.correcoes ? 'sim' : 'nao'));
   $('#x-data').value = p.executado_em || hojeISO(); $('#x-equipe').value = p.equipe || ''; $('#x-parc').value = p.exec_parcial || ''; $('#x-cor-txt').value = p.correcoes || '';
   $('#x-up')._limpa(); $('#x-arqs').innerHTML = p.arquivos.filter(a => a.tipo === 'correcoes').map(a => `<span><b>${/\.pdf$/i.test(a.caminho) ? 'PDF' : 'FOTO'}</b>${esc(a.nome)} · já enviado</span>`).join('');

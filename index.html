@@ -146,7 +146,7 @@
       <section class="secao"><h2>Croqui</h2><div class="grade">
         <div class="campo largo"><span class="r">Croqui em PDF <em>*</em></span>
           <div class="upload" id="p-up-croqui"><span class="pdf-ico">PDF</span><span class="nome">Nenhum arquivo. Só PDF, até 10 MB.</span><label class="btn peq" for="p-arq-croqui">Escolher PDF</label><input type="file" id="p-arq-croqui" accept="application/pdf,.pdf" hidden></div></div>
-        <div class="campo"><span class="r">Já executado?</span><div class="seg"><label><input type="radio" name="p-exec" value="nao" checked>Não</label><label><input type="radio" name="p-exec" value="sim">Sim</label></div><span class="ajuda">Se sim, o processo pula a etapa de execução.</span></div>
+        <div class="campo"><span class="r">Já executado?</span><div class="seg"><label><input type="radio" name="p-exec" value="nao" checked>Não</label><label><input type="radio" name="p-exec" value="sim">Sim</label></div><span class="ajuda">Mesmo já executado, o processo segue o fluxo: Projetos → Engenharia → Cadastro.</span></div>
         <div class="campo" id="p-aq-c" hidden><span class="r">Aquisição <em>*</em></span><div class="seg"><label><input type="radio" name="p-aq" value="sim">Adquirido</label><label><input type="radio" name="p-aq" value="nao">Não adquirido</label></div><span class="ajuda">Não adquirido volta para Projetos depois da execução: não passa pelo Cadastro nem vai à AGEMAN.</span></div>
         <div class="campo"><span class="r">Prioridade</span><div class="seg urg"><label><input type="radio" name="p-urg" value="nao" checked>Normal</label><label class="u"><input type="radio" name="p-urg" value="sim">🔴 Urgente</label></div><span class="ajuda">Urgente aparece no topo da fila de cada setor.</span></div>
         <div class="campo largo"><label class="r" for="p-obs">Observações</label><textarea id="p-obs" placeholder="algo que Projetos precise saber"></textarea></div>
@@ -420,7 +420,7 @@
 <script src="assets/comum.js?v=2"></script>
 <script src="assets/documentos.js?v=2"></script>
 <script src="assets/itens.js?v=5"></script>
-<script src="assets/telas.js?v=3"></script>
+<script src="assets/telas.js?v=4"></script>
 <script src="assets/banco.js?v=1"></script>
 <script src="assets/app.js?v=5"></script>
 </body>
