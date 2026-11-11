@@ -160,7 +160,7 @@ async function projetosAbrir(idSel) {
   $('#j-tit').textContent = p.numero; $('#j-sub').textContent = 'Recebido em ' + dataHora(p.etapa_desde) + ' · ' + (p.movimentos.find(m => m.acao === 'criar')?.por_nome ? 'cadastrado por ' + p.movimentos.find(m => m.acao === 'criar').por_nome : 'histórico da planilha');
   faixaDevolvido($('#j-dev'), p);
   $('#j-num').textContent = ({ '': 'Comum', C: 'Campo / Quadra', R: 'Reequilíbrio', RM: 'Remodelamento', V: 'Locais violentos', MP: 'Manutenção preventiva' }[p.tipo] || '') + ' · ' + p.numero;
-  $('#j-serv').value = p.tipo_servico || (p.tipo === 'R' ? 'REEQUILÍBRIO' : '');
+  $('#j-serv').value = (p.tipo_servico === 'EXPANSÃO' ? 'CRESCIMENTO VEGETATIVO' : p.tipo_servico) || (p.tipo === 'R' ? 'REEQUILÍBRIO' : '');   // Expansão passou a se chamar Crescimento vegetativo
   $('#j-origem').value = p.origem || ''; $('#j-ref').value = p.ref_pedido || ''; $('#j-logr').value = p.logradouro || '';
   selectBairros($('#j-bairro'), p.bairro); $('#j-zona').textContent = p.zona || '';
   $$('input[name=j-exec]').forEach(r => r.checked = (r.value === 'sim') === !!p.ja_executado);
