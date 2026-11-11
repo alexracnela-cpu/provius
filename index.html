@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap">
-<link rel="stylesheet" href="assets/estilo.css?v=5">
+<link rel="stylesheet" href="assets/estilo.css?v=6">
 <script>try{var t=localStorage.getItem('provius-tema');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 </head>
 <body>
@@ -53,18 +53,34 @@
 <header class="topo">
   <div class="topo-in">
     <div class="marca"><img class="lg-claro" src="assets/logo-provius.png" alt="Provius · Gestão de Projetos"><img class="lg-escuro" src="assets/logo-provius-branco.png" alt="Provius · Gestão de Projetos"></div>
-    <div class="abas" role="tablist" id="abas">
+    <nav class="abas" role="tablist" id="abas" aria-label="Telas">
       <button class="aba" role="tab" data-tela="todos">Todos</button>
-      <button class="aba" role="tab" data-tela="pedido" data-setor="Engenharia">1 · Pedido</button>
-      <button class="aba" role="tab" data-tela="projetos" data-setor="Projetos">2 · Projetos</button>
-      <button class="aba" role="tab" data-tela="exe" data-setor="Engenharia">3 · Execução</button>
-      <button class="aba" role="tab" data-tela="cad" data-setor="Cadastro">4 · Cadastro</button>
-      <button class="aba" role="tab" data-tela="asb" data-setor="Projetos">5 · As built e AGEMAN</button>
-      <button class="aba" role="tab" data-tela="saldo">Saldo de Itens<span class="sd-badge" id="sd-badge" hidden></span></button>
-      <button class="aba" role="tab" data-tela="usuarios" data-admin="1">⚙ Usuários</button>
-      <button class="aba" role="tab" data-tela="banco" data-admin="1">⚙ Banco de dados<span class="sd-badge" id="bd-badge" hidden></span></button>
-    </div>
-    <div class="usuario"><span id="u-eu"></span><button type="button" class="tema" id="tema" aria-label="Mudar tema"></button><button type="button" class="btn peq" id="trocar-senha" title="Trocar minha senha">🔑</button><button type="button" class="btn peq" id="sair">Sair</button></div>
+      <div class="esteira-abas">
+        <button class="aba passo" role="tab" data-tela="pedido" data-setor="Engenharia" title="1 · Pedido (cadastro do croqui)"><b>1</b>Pedido</button><span class="seta" aria-hidden="true">›</span>
+        <button class="aba passo" role="tab" data-tela="projetos" data-setor="Projetos" title="2 · Elaborar projeto"><b>2</b>Projetos<span class="fila" data-etapas="1"></span></button><span class="seta" aria-hidden="true">›</span>
+        <button class="aba passo" role="tab" data-tela="exe" data-setor="Engenharia" title="3 · Execução e correções"><b>3</b>Execução<span class="fila" data-etapas="2"></span></button><span class="seta" aria-hidden="true">›</span>
+        <button class="aba passo" role="tab" data-tela="cad" data-setor="Cadastro" title="4 · Emplaquetamento"><b>4</b>Cadastro<span class="fila" data-etapas="3"></span></button><span class="seta" aria-hidden="true">›</span>
+        <button class="aba passo" role="tab" data-tela="asb" data-setor="Projetos" title="5 · As built e AGEMAN"><b>5</b>As built<span class="fila" data-etapas="4,5"></span></button>
+      </div>
+      <span class="divisor" aria-hidden="true"></span>
+      <button class="aba ico" role="tab" data-tela="saldo" title="Saldo de Itens" aria-label="Saldo de Itens"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M7 16V10M12 16V5M17 16v-4"/></svg><span class="sd-badge" id="sd-badge" hidden></span></button>
+      <details class="menu" id="menu-adm">
+        <summary class="aba ico" title="Administração" aria-label="Administração"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span class="ponto" id="adm-ponto" hidden></span></summary>
+        <div class="menu-caixa">
+          <button class="aba" role="tab" data-tela="usuarios" data-admin="1">Usuários</button>
+          <button class="aba" role="tab" data-tela="banco" data-admin="1">Banco de dados<span class="sd-badge" id="bd-badge" hidden></span></button>
+        </div>
+      </details>
+    </nav>
+    <details class="menu usuario" id="menu-eu">
+      <summary class="avatar" id="u-ini" title="Minha conta" aria-label="Minha conta"></summary>
+      <div class="menu-caixa direita">
+        <p class="menu-eu" id="u-eu"></p>
+        <button type="button" class="item" id="tema"></button>
+        <button type="button" class="item" id="trocar-senha">Trocar minha senha</button>
+        <button type="button" class="item" id="sair">Sair</button>
+      </div>
+    </details>
   </div>
 </header>
 
@@ -421,7 +437,7 @@
 <script src="assets/documentos.js?v=2"></script>
 <script src="assets/itens.js?v=5"></script>
 <script src="assets/telas.js?v=4"></script>
-<script src="assets/banco.js?v=1"></script>
-<script src="assets/app.js?v=5"></script>
+<script src="assets/banco.js?v=2"></script>
+<script src="assets/app.js?v=6"></script>
 </body>
 </html>

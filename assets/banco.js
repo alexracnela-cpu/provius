@@ -25,7 +25,7 @@ async function bancoAba() {
   if (!EU || !EU.admin) return;
   try { if (!(await bancoCarregar())) return; } catch (e) { return; }
   const d = BD.dados, n = [d.banco_bytes / d.limites.banco, d.storage_bytes / d.limites.storage].filter(p => p >= 0.8).length, b = $('#bd-badge');
-  b.hidden = !n; b.textContent = n; b.title = 'Uso acima de 80% do limite do plano';
+  b.hidden = !n; b.textContent = n; b.title = 'Uso acima de 80% do limite do plano'; $('#adm-ponto').hidden = !n;
 }
 
 function bancoIniciar() {

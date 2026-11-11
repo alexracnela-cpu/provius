@@ -8,7 +8,7 @@ const pode = t => { const x = TELAS[t]; if (!x || !EU) return false; if (x.admin
 
 // ---------- tema ----------
 function temaAtual() { const t = document.documentElement.dataset.theme; return t || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); }
-function pintaTema() { const b = $('#tema'), d = temaAtual() === 'dark'; b.textContent = d ? '☀' : '☾'; b.title = d ? 'Mudar para modo claro' : 'Mudar para modo escuro'; b.setAttribute('aria-label', b.title); }
+function pintaTema() { const b = $('#tema'), d = temaAtual() === 'dark'; b.textContent = d ? '☀  Modo claro' : '☾  Modo escuro'; b.title = d ? 'Mudar para modo claro' : 'Mudar para modo escuro'; }
 $('#tema').onclick = () => { const n = temaAtual() === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = n; try { localStorage.setItem('provius-tema', n) } catch (e) { } pintaTema(); };
 
 // ---------- telas de acesso ----------
@@ -46,8 +46,10 @@ async function entrar(senhaOk) {
   try { EU = await rpc('registrar_acesso', { p_senha_ok: !!senhaOk }); }
   catch (e) { aviso(e.message, true); return; }
   if (!EU.senha_ok) { telaSenha('primeiro', EU.email); return; }
-  $('#u-eu').innerHTML = `<b>${esc(EU.nome)}</b> · ${esc(EU.setor)}`;
-  $$('#abas .aba').forEach(a => a.hidden = !pode(a.dataset.tela));
+  $('#u-eu').innerHTML = `<b>${esc(EU.nome)}</b>${esc(EU.setor)}${EU.email ? '<br>' + esc(EU.email) : ''}`;
+  $('#u-ini').textContent = iniciais(EU.nome);
+  $$('#abas .aba[data-tela]').forEach(a => a.hidden = !pode(a.dataset.tela));
+  $('#menu-adm').hidden = !$$('#menu-adm .aba').some(a => !a.hidden);
   mostra('#app'); pintaTema();
   const { data: b } = await sb.from('bairros').select('*'); BAIRROS = {}; (b || []).forEach(x => BAIRROS[x.nome] = x.zona);
   await recarregar(); itensCarregar().catch(e => console.error(e));   // selo da aba Saldo de Itens
@@ -68,17 +70,31 @@ async function recarregar() {
     if (error) { if (!SEM_URG && /urgente/.test(error.message || '')) { SEM_URG = true; todos = []; de = 0; continue; }
       if (!SEM_TRAVA && /editando_/.test(error.message || '')) { SEM_TRAVA = true; todos = []; de = 0; continue; } toast(msgErro(error), true); break; }
     todos = todos.concat(data); if (data.length < N) break; de += N; }
-  D = todos.map(normMP); if (TELA === 'todos' && !$('#tela-todos').hidden) todosDesenha();
+  D = todos.map(normMP); cabFilas(); if (TELA === 'todos' && !$('#tela-todos').hidden) todosDesenha();
 }
 function abrirTela(t, recarregou) {
   if (!pode(t)) t = 'todos'; if (t !== 'projetos') travaLiberar(); TELA = t;
-  $$('#abas .aba').forEach(a => a.setAttribute('aria-selected', a.dataset.tela === t));
+  $$('#abas .aba[data-tela]').forEach(a => a.setAttribute('aria-selected', a.dataset.tela === t));
+  $('#menu-adm summary').classList.toggle('sel', !!$('#menu-adm .aba[aria-selected="true"]')); menusFechar();
+  const sel = $('#abas .esteira-abas .aba[aria-selected="true"]'), nav = $('#abas');   // no celular, a etapa aberta fica visível na faixa
+  if (sel && nav.scrollWidth > nav.clientWidth) nav.scrollTo({ left: sel.offsetLeft - (nav.clientWidth - sel.offsetWidth) / 2, behavior: 'smooth' });
   Object.keys(TELAS).forEach(k => $('#tela-' + k).hidden = k !== t);
   try { history.replaceState(null, '', '#' + t); } catch (e) { }
   if (!recarregou) window.scrollTo(0, 0);
   TELAS[t].abrir();
 }
-$$('#abas .aba').forEach(a => a.onclick = () => abrirTela(a.dataset.tela));
+$$('#abas .aba[data-tela]').forEach(a => a.onclick = () => abrirTela(a.dataset.tela));
+
+// ---------- cabeçalho: filas da esteira, iniciais e menus ----------
+function iniciais(n) { const p = String(n || '?').trim().split(/\s+/); return ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); }
+function cabFilas() {
+  $$('#abas .fila').forEach(f => { const n = f.dataset.etapas.split(',').reduce((a, e) => a + filaDe(+e).length, 0);
+    f.textContent = n; f.hidden = !n; f.title = n + (n === 1 ? ' processo' : ' processos') + ' nesta etapa'; });
+}
+function menusFechar(exceto) { $$('details.menu[open]').forEach(d => { if (d !== exceto) d.open = false; }); }
+document.addEventListener('click', e => menusFechar(e.target.closest('details.menu')));
+document.addEventListener('keydown', e => { if (e.key === 'Escape') menusFechar(); });
+$$('#menu-eu .item').forEach(b => b.addEventListener('click', () => { if (b.id !== 'tema') menusFechar(); }));
 window.addEventListener('hashchange', () => { const t = TELA_HASH(); if (t && t !== TELA) abrirTela(t); });
 
 // ---------- visão geral ----------
