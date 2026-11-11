@@ -88,7 +88,7 @@ $$('#abas .aba[data-tela]').forEach(a => a.onclick = () => abrirTela(a.dataset.t
 // ---------- cabeçalho: filas da esteira, iniciais e menus ----------
 function iniciais(n) { const p = String(n || '?').trim().split(/\s+/); return ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); }
 function cabFilas() {
-  $$('#abas .fila').forEach(f => { const n = f.dataset.etapas.split(',').reduce((a, e) => a + filaDe(+e).length, 0);
+  $$('#abas .fila-n').forEach(f => { const n = f.dataset.etapas.split(',').reduce((a, e) => a + filaDe(+e).length, 0);
     f.textContent = n; f.hidden = !n; f.title = n + (n === 1 ? ' processo' : ' processos') + ' nesta etapa'; });
 }
 function menusFechar(exceto) { $$('details.menu[open]').forEach(d => { if (d !== exceto) d.open = false; }); }

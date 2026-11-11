@@ -500,8 +500,8 @@ td input[type=number]{width:100px;text-align:right;font-family:var(--f-num)}
 .aba.passo:hover{border-color:var(--suave)}
 .aba.passo[aria-selected="true"]{background:var(--ch-agora);border-color:var(--ch-agora);color:var(--ch-agora-t)}
 .aba.passo[aria-selected="true"] b{background:var(--ch-agora-t);color:var(--ch-agora)}
-.fila{font:600 11px var(--f-num);min-width:20px;height:18px;padding:0 6px;border-radius:9px;background:var(--sup2);color:var(--suave);display:inline-flex;align-items:center;justify-content:center}
-.aba.passo[aria-selected="true"] .fila{background:rgba(0,0,0,.18);color:var(--ch-agora-t)}
+.fila-n{font:600 11px var(--f-num);min-width:20px;height:18px;padding:0 6px;border-radius:9px;background:var(--sup2);color:var(--suave);display:inline-flex;align-items:center;justify-content:center}
+.aba.passo[aria-selected="true"] .fila-n{background:rgba(0,0,0,.18);color:var(--ch-agora-t)}
 .seta{color:var(--suave);font:400 20px var(--f-corpo);padding:0 1px;user-select:none}
 .divisor{width:1px;align-self:stretch;margin:6px 6px;background:var(--linha);flex:none}
 .aba.ico{position:relative;padding:7px;border-radius:8px}
