@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap">
-<link rel="stylesheet" href="assets/estilo.css?v=7">
+<link rel="stylesheet" href="assets/estilo.css?v=8">
 <script>try{var t=localStorage.getItem('provius-tema');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 </head>
 <body>
@@ -63,6 +63,7 @@
         <button class="aba passo" role="tab" data-tela="asb" data-setor="Projetos" title="5 · As built e AGEMAN"><b>5</b>As built<span class="fila-n" data-etapas="4,5"></span></button>
       </div>
       <span class="divisor" aria-hidden="true"></span>
+      <button class="aba ico" role="tab" data-tela="hist" title="Histórico" aria-label="Histórico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></button>
       <button class="aba ico" role="tab" data-tela="saldo" title="Saldo de Itens" aria-label="Saldo de Itens"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M7 16V10M12 16V5M17 16v-4"/></svg><span class="sd-badge" id="sd-badge" hidden></span></button>
       <details class="menu" id="menu-adm">
         <summary class="aba ico" title="Administração" aria-label="Administração"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span class="ponto" id="adm-ponto" hidden></span></summary>
@@ -345,6 +346,25 @@
 </main>
 
 <!-- ===== USO DO BANCO DE DADOS ===== -->
+<!-- ===== HISTÓRICO ===== -->
+<main class="pagina sem-lado" id="tela-hist" hidden>
+  <div style="min-width:0">
+    <div class="cab"><div><div class="etapa">Movimentos de todos os processos</div><h1>Histórico</h1><p class="sub" id="hi-sub"></p></div>
+      <button type="button" class="btn" id="hi-recarregar">↻ Atualizar</button></div>
+    <div class="sd-kpis" id="hi-kpis"></div>
+    <section class="secao">
+      <div class="hi-filtros">
+        <div class="vis" role="group" aria-label="Período" id="hi-rapido"><button type="button" data-d="0">Hoje</button><button type="button" data-d="7">7 dias</button><button type="button" data-d="30">30 dias</button><button type="button" data-d="365">12 meses</button></div>
+        <label>De <input type="date" id="hi-de"></label><label>Até <input type="date" id="hi-ate"></label>
+        <select id="hi-acao" aria-label="Ação"></select>
+        <select id="hi-pessoa" aria-label="Pessoa"><option value="">Todas as pessoas</option></select>
+        <input type="search" id="hi-busca" placeholder="Nº do processo ou logradouro" aria-label="Buscar processo">
+      </div>
+      <div id="hi-lista"></div>
+    </section>
+  </div>
+</main>
+
 <main class="pagina sem-lado" id="tela-banco" hidden>
   <div style="min-width:0">
     <div class="cab"><div><div class="etapa">Administração · só o administrador vê esta aba</div><h1>Uso do banco de dados</h1><p class="sub" id="bd-sub"></p></div>
@@ -436,8 +456,9 @@
 <script src="assets/comum.js?v=2"></script>
 <script src="assets/documentos.js?v=2"></script>
 <script src="assets/itens.js?v=5"></script>
-<script src="assets/telas.js?v=5"></script>
+<script src="assets/telas.js?v=6"></script>
 <script src="assets/banco.js?v=2"></script>
-<script src="assets/app.js?v=7"></script>
+<script src="assets/historico.js?v=1"></script>
+<script src="assets/app.js?v=8"></script>
 </body>
 </html>

@@ -435,6 +435,7 @@ function textoMov(m) {
   if (m.acao === 'concluir') return m.texto || 'concluiu o processo (não adquirido, sem AGEMAN)';
   if (m.acao === 'itens') return m.texto || 'lançou os itens de reequilíbrio';
   if (m.acao === 'enviar') return m.texto || 'enviou à AGEMAN';
+  if (m.acao === 'desfazer_envio') return 'desfez o envio à AGEMAN' + (m.texto ? ' · ' + m.texto : '');
   if (m.acao === 'editar') return (m.texto || 'alterou dados').replace(/_/g, ' ');
   return m.texto || m.acao;
 }
