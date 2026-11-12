@@ -118,9 +118,9 @@ const PJ = { fila: [], at: 0, p: null };
 function projetosIniciar() {
   caixaPdf('#j-arq', '#j-up');
   $('#j-bairro').onchange = () => $('#j-zona').textContent = BAIRROS[$('#j-bairro').value] || '';
-  $('#j-addpot').onclick = () => { potLinha(50, ''); potSoma(); };
+  $('#j-addpot').onclick = () => { potLinha(50, '', 'j'); potSoma('j'); };
   itensProjetoIniciar();
-  $$('.j-mod').forEach(i => i.oninput = potSoma);
+  $$('.j-mod').forEach(i => i.oninput = () => potSoma('j'));
   $('#j-croqui').onclick = () => verArquivo(ultimoArquivo(PJ.p, 'croqui'), 'Croqui ' + PJ.p.numero);
   $('#j-salvar').onclick = () => projetosGravar(false);
   $('#j-ok').onclick = () => projetosGravar(true);
@@ -166,8 +166,7 @@ async function projetosAbrir(idSel) {
   $$('input[name=j-exec]').forEach(r => r.checked = (r.value === 'sim') === !!p.ja_executado);
   $$('input[name=j-urg]').forEach(r => r.checked = (r.value === 'sim') === !!p.urgente);
   $('#j-obsped-c').hidden = !p.obs_pedido; $('#j-obsped').textContent = p.obs_pedido || '';
-  $('#j-pot').innerHTML = ''; Object.entries(p.potencias || {}).forEach(([w, q]) => potLinha(+w, q)); if (!Object.keys(p.potencias || {}).length) potLinha(50, '');
-  $('#j-cv').value = p.mod_cv || ''; $('#j-mo').value = p.mod_mod || ''; $('#j-de').value = p.mod_dest || ''; potSoma();
+  potPreenche(p, 'j');
   $('#j-obs').value = p.obs_projetos || ''; $('#j-up')._limpa();
   const ja = p.arquivos.filter(a => a.tipo === 'projeto' && new Date(a.em) >= new Date(p.etapa_desde)).slice(-1)[0];
   $('#j-arq-info').innerHTML = ja ? `✓ Já enviado: <button type="button" class="link-pdf" id="j-ver-proj">${esc(ja.nome)}</button> (${dataHora(ja.em)}). Escolha outro só se precisar mandar uma versão nova; o anterior fica no histórico.` : '';
@@ -176,17 +175,25 @@ async function projetosAbrir(idSel) {
   await itensProjeto(p); if (seq !== PJ.seq) return;
   projetosModo(trava);
 }
-function potLinha(w, q) {
-  const tr = document.createElement('tr'), id = 'pw' + Math.random().toString(36).slice(2, 7);
+// potências e modalidades: o mesmo editor serve à Tela 2 (pre 'j') e ao As built (pre 'a')
+function potLinha(w, q, pre = 'j') {
+  const tr = document.createElement('tr'), id = 'pw' + Math.random().toString(36).slice(2, 7), soma = () => potSoma(pre);
   tr.innerHTML = `<td><select id="${id}" aria-label="Potência">${POTS.map(p => `<option value="${p}"${p === w ? ' selected' : ''}>${p} W</option>`).join('')}</select></td><td class="num"><input type="number" min="0" value="${q ?? ''}" aria-label="Quantidade" class="qt"></td><td><button type="button" class="rem" aria-label="Remover linha">×</button></td>`;
-  tr.querySelector('.qt').oninput = potSoma; tr.querySelector('select').onchange = potSoma; tr.querySelector('.rem').onclick = () => { tr.remove(); potSoma(); }; $('#j-pot').appendChild(tr);
+  tr.querySelector('.qt').oninput = soma; tr.querySelector('select').onchange = soma; tr.querySelector('.rem').onclick = () => { tr.remove(); soma(); }; $('#' + pre + '-pot').appendChild(tr);
 }
-function potLer() { const o = {}; $$('#j-pot tr').forEach(tr => { const w = tr.querySelector('select').value, q = +tr.querySelector('.qt').value || 0; if (q > 0) o[w] = (o[w] || 0) + q; }); return o; }
-function potSoma() {
-  const t = Object.values(potLer()).reduce((a, b) => a + b, 0); $('#j-tot').textContent = t;
-  const m = $$('.j-mod').reduce((a, i) => a + (+i.value || 0), 0), c = $('#j-conf');
-  if (t === m && t > 0) { c.className = 'conf ok'; c.textContent = '✓ Modalidades somam ' + m + ' pontos, igual ao total das potências.'; }
-  else { c.className = 'conf no'; c.textContent = 'Modalidades somam ' + m + ' pontos, mas o total das potências é ' + t + '. Ajuste antes de entregar.'; }
+function potLer(pre = 'j') { const o = {}; $$('#' + pre + '-pot tr').forEach(tr => { const w = tr.querySelector('select').value, q = +tr.querySelector('.qt').value || 0; if (q > 0) o[w] = (o[w] || 0) + q; }); return o; }
+function potConfere(pre = 'j') {
+  const t = Object.values(potLer(pre)).reduce((a, b) => a + b, 0), m = $$('.' + pre + '-mod').reduce((a, i) => a + (+i.value || 0), 0);
+  return { t, m, ok: t === m && t > 0 };
+}
+function potSoma(pre = 'j') {
+  const { t, m, ok } = potConfere(pre), c = $('#' + pre + '-conf'); $('#' + pre + '-tot').textContent = t;
+  if (ok) { c.className = 'conf ok'; c.textContent = '✓ Modalidades somam ' + m + ' pontos, igual ao total das potências.'; }
+  else { c.className = 'conf no'; c.textContent = 'Modalidades somam ' + m + ' pontos, mas o total das potências é ' + t + '. Ajuste antes de ' + (pre === 'a' ? 'concluir.' : 'entregar.'); }
+}
+function potPreenche(p, pre = 'j') {
+  $('#' + pre + '-pot').innerHTML = ''; Object.entries(p.potencias || {}).forEach(([w, q]) => potLinha(+w, q, pre)); if (!Object.keys(p.potencias || {}).length) potLinha(50, '', pre);
+  $('#' + pre + '-cv').value = p.mod_cv || ''; $('#' + pre + '-mo').value = p.mod_mod || ''; $('#' + pre + '-de').value = p.mod_dest || ''; potSoma(pre);
 }
 async function projetosGravar(entregar) {
   const p = PJ.p; if (!p) return;
@@ -322,6 +329,9 @@ function asbIniciar() {
   $('#a-dev').onclick = () => abrirDevolver(AB.p, naoAdq(AB.p) ? [2, 1] : [3, 2, 1]);
   $('#a-canc').onclick = () => abrirCancelar(AB.p);
   $('#a-salvar').onclick = () => asbGravar(false); $('#a-ok').onclick = () => asbGravar(true);
+  $('#a-addpot').onclick = () => { potLinha(50, '', 'a'); potSoma('a'); };
+  $$('.a-mod').forEach(i => i.oninput = () => potSoma('a'));
+  $('#a-pot-abre').onclick = () => asbPotEditar(!AB.potEd);
   $('#ag-todos').onchange = e => { AB.sel = e.target.checked ? new Set(filaDe(5).map(d => d.id)) : new Set(); agLista(); };
   $('#ag-carta').onclick = abrirCarta; $('#ag-enviar').onclick = registrarEnvio;
   $('#ct-gerar').onclick = cartaPrevia; ['#ct-num', '#ct-data', '#ct-dest', '#ct-att', '#ct-attc', '#ct-ass', '#ct-ref', '#ct-link', '#ct-nome', '#ct-cargo'].forEach(s => $(s).addEventListener('change', cartaPrevia));
@@ -347,15 +357,38 @@ async function asbAbrir(idSel) {
   $('#a-obs-box').hidden = !p.obs_cadastro; $('#a-obs-cad').textContent = p.obs_cadastro || '';
   $('#a-hist').innerHTML = p.movimentos.map(m => `<li><span>${dataBR(m.em)}</span><b style="font-weight:500">${esc(m.por_nome || '')}: ${esc(textoMov(m))}</b></li>`).join('') || '<li><span></span><b style="font-weight:500">Histórico da planilha (sem movimentos registrados).</b></li>';
   $('#a-ok').textContent = naoAdq(p) ? 'Concluir processo (não adquirido, sem AGEMAN) ✓' : 'Concluir as built → pronto p/ AGEMAN';
-  $('#a-pts').textContent = p.total_pontos + ' pontos'; $('#a-obs').value = p.obs_asbuilt || ''; $('#a-up')._limpa();
+  $('#a-obs').value = p.obs_asbuilt || ''; $('#a-up')._limpa();
+  $('#a-sec-pot').hidden = p.tipo === 'R';   // R- usa os itens de reequilíbrio, não potências
+  asbPotResumo(p); potPreenche(p, 'a'); asbPotEditar(false);
   AB.visor.limpa(); $('#v-fonte').textContent = pl ? 'Carregando…' : 'Sem PDF de plaquetas neste processo.';
   if (pl) tarefa(async () => { await AB.visor.abrir(await bytesDe(pl.caminho), pl.nome); $('#v-fonte').textContent = pl.nome + ' · enviado por ' + (pl.por_nome || '') + ' em ' + dataHora(pl.em); });
 }
+// "Pontos no as built": resumo das potências e modalidades, com o editor para corrigir
+function asbPotResumo(p) {
+  const pw = Object.entries(p.potencias || {}).filter(([, q]) => q > 0).sort((a, b) => +a[0] - +b[0]);
+  const mods = [['Cresc. vegetativo', p.mod_cv], ['Modernização', p.mod_mod], ['Destaque', p.mod_dest]].filter(([, v]) => v > 0);
+  $('#a-pts').innerHTML = `<b>${p.total_pontos} pontos</b>` + (pw.length ? ' · ' + pw.map(([w, q]) => `${q}× ${w} W`).join(', ') : '') + (mods.length ? '<br><span class="ajuda">' + mods.map(([k, v]) => k + ': ' + v).join(' · ') + '</span>' : '');
+}
+function asbPotEditar(abre) {
+  AB.potEd = abre; $('#a-pot-ed').hidden = !abre;
+  $('#a-pot-abre').textContent = abre ? 'Desfazer correção' : '✎ Corrigir potências e modalidades';
+  if (!abre && AB.p) potPreenche(AB.p, 'a');   // fechou sem salvar: volta aos valores gravados
+}
+// só manda potências/modalidades se mudaram (assim o histórico registra só correções de verdade)
+function asbPotCampos(p) {
+  if (!AB.potEd || p.tipo === 'R') return {};
+  const pw = potLer('a'), igual = (a, b) => { const ka = Object.keys(a).filter(k => +a[k] > 0), kb = Object.keys(b).filter(k => +b[k] > 0); return ka.length === kb.length && ka.every(k => +a[k] === +b[k]); };
+  const c = { potencias: pw, mod_cv: +$('#a-cv').value || 0, mod_mod: +$('#a-mo').value || 0, mod_dest: +$('#a-de').value || 0 };
+  const mudou = !igual(pw, p.potencias || {}) || c.mod_cv !== (p.mod_cv || 0) || c.mod_mod !== (p.mod_mod || 0) || c.mod_dest !== (p.mod_dest || 0);
+  return mudou ? c : {};
+}
 async function asbGravar(entregar) {
   const p = AB.p; if (!p) return; const arq = $('#a-up')._arqs[0];
+  const pot = asbPotCampos(p);
+  if (pot.potencias && !potConfere('a').ok) { $('#a-pot-ed').scrollIntoView({ behavior: 'smooth', block: 'center' }); toast('As modalidades precisam somar igual ao total das potências', true); return; }
   const r = await tarefa(async () => {
     if (arq) { const a = await enviarArquivo('processos/' + p.id, 'asbuilt', arq); await rpc('registrar_arquivo', { p_id: p.id, p_tipo: 'asbuilt', p_caminho: a.caminho, p_nome: a.nome, p_tamanho: a.tamanho }); $('#a-up')._limpa(); }
-    const campos = { obs_asbuilt: $('#a-obs').value.trim() };
+    const campos = { obs_asbuilt: $('#a-obs').value.trim(), ...pot };
     if (entregar) return rpc('entregar', { p_id: p.id, p_campos: campos });
     await rpc('salvar', { p_id: p.id, p_campos: campos }); return { salvo: true };
   });
@@ -436,6 +469,6 @@ function textoMov(m) {
   if (m.acao === 'itens') return m.texto || 'lançou os itens de reequilíbrio';
   if (m.acao === 'enviar') return m.texto || 'enviou à AGEMAN';
   if (m.acao === 'desfazer_envio') return 'desfez o envio à AGEMAN' + (m.texto ? ' · ' + m.texto : '');
-  if (m.acao === 'editar') return (m.texto || 'alterou dados').replace(/_/g, ' ');
+  if (m.acao === 'editar') return (m.texto || 'alterou dados').replace(/\bmod_cv\b/g, 'pontos de crescimento vegetativo').replace(/\bmod_mod\b/g, 'pontos de modernização').replace(/\bmod_dest\b/g, 'pontos de iluminação de destaque').replace(/\bpotencias\b/g, 'potências').replace(/_/g, ' ');
   return m.texto || m.acao;
 }

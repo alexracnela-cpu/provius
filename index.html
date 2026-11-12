@@ -306,9 +306,19 @@
       <section class="secao"><h2>As built</h2><div class="grade">
         <div class="campo largo"><span class="r">PDF do as built atualizado <em>*</em></span>
           <div class="upload" id="a-up"><span class="pdf-ico">PDF</span><span class="nome">Projeto final com as correções e as plaquetas. Só PDF, até 10 MB.</span><label class="btn peq" for="a-arq">Escolher PDF</label><input type="file" id="a-arq" accept="application/pdf,.pdf" hidden></div></div>
-        <div class="campo"><span class="r">Pontos no as built</span><div class="zona on" id="a-pts"></div></div>
         <div class="campo largo"><label class="r" for="a-obs">Observações</label><textarea id="a-obs"></textarea></div>
       </div></section>
+      <section class="secao" id="a-sec-pot"><h2>Pontos no as built</h2>
+        <div class="total"><div class="zona on" id="a-pts" style="flex:1;min-width:220px"></div><button type="button" class="btn peq" id="a-pot-abre">✎ Corrigir potências e modalidades</button></div>
+        <div id="a-pot-ed" hidden>
+          <div class="tab-wrap"><table><thead><tr><th>Potência</th><th class="num">Quantidade</th><th></th></tr></thead><tbody id="a-pot"></tbody></table></div>
+          <div class="total"><button type="button" class="btn peq" id="a-addpot">+ Adicionar potência</button><div style="display:flex;align-items:baseline;gap:8px"><span class="ajuda">Total de pontos</span><span class="numero" id="a-tot">0</span></div></div>
+          <div class="mods">
+            <div class="campo"><label class="r" for="a-cv">Crescimento vegetativo</label><input type="number" min="0" id="a-cv" class="a-mod"></div>
+            <div class="campo"><label class="r" for="a-mo">Modernização</label><input type="number" min="0" id="a-mo" class="a-mod"></div>
+            <div class="campo"><label class="r" for="a-de">Iluminação de destaque</label><input type="number" min="0" id="a-de" class="a-mod"></div>
+          </div><div class="conf" id="a-conf"></div>
+        </div></section>
       <div class="acoes"><button type="button" class="btn canc" id="a-canc">Cancelar processo</button><button type="button" class="btn dev" id="a-dev">↩ Devolver</button><button type="button" class="btn" id="a-salvar">Salvar</button><button type="button" class="btn pri" id="a-ok">Concluir as built → pronto p/ AGEMAN</button></div>
     </div>
     <div id="a-vazio" hidden><div class="cab"><div><div class="etapa">Setor de Projetos · As built</div><h1>Nenhum as built pendente</h1><p class="sub">Tudo o que voltou do Cadastro já foi atualizado.</p></div></div></div>
