@@ -4,7 +4,8 @@
 //
 // Tabela (gravada em processos.tabela_carga / tabela_carga_asb):
 //   { mod: [{lg, cl, pr, qr, pn, lm, irc, qn, br}],   modernização: retirado (pr, qr) e instalado (pn, lm, irc, qn, br)
-//     exp: [{lg, cl, pn, lm, irc, qn, br}],           expansão: pontos novos
+//     exp: [{lg, cl, pn, lm, irc, qn, br, bl}],       expansão: pontos novos · bl: 'dest' = linha do bloco Iluminação de destaque
+//                                                     (gravado junto com a expansão para o banco ver as linhas; na tela fica em t.dest)
 //     mat_aj: {descrição: qtd}, mat_nome: {descrição: novo nome}, mat_rem: [descrição],   materiais calculados corrigidos, renomeados ou tirados
 //     mat_extra: [{d, q}] }                                                              materiais a mais
 
@@ -17,10 +18,12 @@ const tcQ = v => +v || 0;
 let SEM_TC = false;   // banco ainda sem as colunas da tabela de carga: as telas funcionam como antes
 
 // ---------- cálculos ----------
-const tcVazia = () => ({ mod: [], exp: [], mat_aj: {}, mat_nome: {}, mat_rem: [], mat_extra: [] });
+const tcVazia = () => ({ mod: [], exp: [], dest: [], mat_aj: {}, mat_nome: {}, mat_rem: [], mat_extra: [] });
 function tcNormaliza(t) {
   t = t ? JSON.parse(JSON.stringify(t)) : tcVazia();
   t.mod = Array.isArray(t.mod) ? t.mod : []; t.exp = Array.isArray(t.exp) ? t.exp : [];
+  t.dest = [...(Array.isArray(t.dest) ? t.dest : []), ...t.exp.filter(r => r && r.bl === 'dest')].map(r => { const c = { ...r }; delete c.bl; return c; });
+  t.exp = t.exp.filter(r => r && r.bl !== 'dest');
   t.mat_aj = t.mat_aj && typeof t.mat_aj === 'object' ? t.mat_aj : {}; t.mat_extra = Array.isArray(t.mat_extra) ? t.mat_extra : [];
   t.mat_nome = t.mat_nome && typeof t.mat_nome === 'object' ? t.mat_nome : {}; t.mat_rem = Array.isArray(t.mat_rem) ? t.mat_rem : [];
   delete t.por; delete t.em; return t;
@@ -30,19 +33,20 @@ function tcTotais(t) {
   const qR = s(t.mod, r => tcQ(r.qr)), pR = s(t.mod, r => tcQ(r.qr) * (tcQ(r.pr) + tcPerda(tcQ(r.pr))));
   const qM = s(t.mod, r => tcQ(r.qn)), pM = s(t.mod, r => tcQ(r.qn) * tcQ(r.pn));
   const qE = s(t.exp, r => tcQ(r.qn)), pE = s(t.exp, r => tcQ(r.qn) * tcQ(r.pn));
-  return { qR, pR, qM, pM, qE, pE, red: pR - pM, pct: pR ? (pR - pM) / pR : 0, pot: tcPotencias(t) };
+  const qD = s(t.dest, r => tcQ(r.qn)), pD = s(t.dest, r => tcQ(r.qn) * tcQ(r.pn));
+  return { qR, pR, qM, pM, qE, pE, qD, pD, qI: qM + qE + qD, pI: pM + pE + pD, red: pR - pM, pct: pR ? (pR - pM) / pR : 0, pot: tcPotencias(t) };
 }
-function tcPotencias(t) { const o = {}; [...t.mod, ...t.exp].forEach(r => { const q = tcQ(r.qn); if (q > 0 && tcQ(r.pn)) o[r.pn] = (o[r.pn] || 0) + q; }); return o; }
-// modernização → pontos de modernização; expansão → crescimento vegetativo (ou destaque, no serviço Iluminação de destaque)
-function tcModalidades(t, servico) {
-  const T = tcTotais(t), dest = /DESTAQUE/i.test(servico || '');
-  return { mod_mod: T.qM, mod_cv: dest ? 0 : T.qE, mod_dest: dest ? T.qE : 0 };
+function tcPotencias(t) { const o = {}; [...t.mod, ...t.exp, ...t.dest].forEach(r => { const q = tcQ(r.qn); if (q > 0 && tcQ(r.pn)) o[r.pn] = (o[r.pn] || 0) + q; }); return o; }
+// cada bloco vai para a sua modalidade: modernização → modernização · expansão → crescimento vegetativo · destaque → destaque
+function tcModalidades(t) {
+  const T = tcTotais(t);
+  return { mod_mod: T.qM, mod_cv: T.qE, mod_dest: T.qD };
 }
 // materiais calculados: [descrição, quantidade, regra]
 function tcMateriaisAuto(t) {
   const lum = {}, bracos = {}; let modL = 0, expL = 0;
   const conta = (r, exp) => { const q = tcQ(r.qn); if (!q) return; exp ? expL += q : modL += q; if (tcQ(r.pn)) lum[r.pn] = (lum[r.pn] || 0) + q; if (tcQ(r.br)) bracos[tcQ(r.br)] = (bracos[tcQ(r.br)] || 0) + q; };
-  t.mod.forEach(r => conta(r, false)); t.exp.forEach(r => conta(r, true));
+  t.mod.forEach(r => conta(r, false)); [...t.exp, ...t.dest].forEach(r => conta(r, true));
   const L = modL + expL, m = [];
   Object.entries(bracos).sort((a, b) => a[0] - b[0]).forEach(([b, q]) => m.push(['BRAÇO GALVANIZADO ' + Math.round(b * 1000) + 'mm', q, 'braço de cada linha × quantidade']));
   Object.entries(lum).sort((a, b) => a[0] - b[0]).forEach(([w, q]) => m.push(['LUMINÁRIA LED ' + w + 'W', q, 'soma das linhas']));
@@ -65,7 +69,7 @@ function tcMateriais(t) {
 }
 // o que falta para a tabela valer (vazio = está ok)
 function tcFaltas(t) {
-  const f = [], linhas = [...t.mod.map(r => ['Modernização', r]), ...t.exp.map(r => ['Expansão', r])];
+  const f = [], linhas = [...t.mod.map(r => ['Modernização', r]), ...t.exp.map(r => ['Expansão', r]), ...t.dest.map(r => ['Destaque', r])];
   if (!linhas.some(([, r]) => tcQ(r.qn) > 0)) f.push('pelo menos uma linha com quantidade instalada');
   linhas.forEach(([b, r], i) => {
     if (!(r.lg || '').trim()) f.push(`logradouro na linha ${i + 1} (${b})`);
@@ -73,7 +77,7 @@ function tcFaltas(t) {
   });
   return [...new Set(f)];
 }
-const tcTemLinhas = t => !!t && ((t.mod || []).some(r => tcQ(r.qn) || tcQ(r.qr)) || (t.exp || []).some(r => tcQ(r.qn)));
+const tcTemLinhas = t => !!t && ((t.mod || []).some(r => tcQ(r.qn) || tcQ(r.qr)) || (t.exp || []).some(r => tcQ(r.qn)) || (t.dest || []).some(r => tcQ(r.qn)));
 const tcExige = p => !!p && ['', 'C'].includes(p.tipo || '') && new Date(p.criado_em) >= new Date(TC_DESDE);
 const tcLinhaMod = ult => ({ lg: ult?.lg || '', cl: ult?.cl || 'V5', pr: ult?.pr || 70, qr: '', pn: ult?.pn || 40, lm: ult?.lm || '', irc: ult?.irc || '>70', qn: '', br: ult?.br ?? 2 });
 const tcLinhaExp = ult => ({ lg: ult?.lg || '', cl: ult?.cl || 'V5', pn: ult?.pn || 50, lm: ult?.lm || '', irc: ult?.irc || '>70', qn: '', br: ult?.br ?? '' });
@@ -81,7 +85,7 @@ const tcLinhaExp = ult => ({ lg: ult?.lg || '', cl: ult?.cl || 'V5', pn: ult?.pn
 function tcParaGravar(t) {
   const vazia = r => !String(r.lg || '').trim() && !tcQ(r.qn) && !tcQ(r.qr);
   const lim = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v]));
-  return { mod: t.mod.filter(r => !vazia(r)).map(lim), exp: t.exp.filter(r => !vazia(r)).map(lim), mat_aj: t.mat_aj || {}, mat_nome: t.mat_nome || {}, mat_rem: t.mat_rem || [], mat_extra: (t.mat_extra || []).filter(x => (x.d || '').trim()) };
+  return { mod: t.mod.filter(r => !vazia(r)).map(lim), exp: [...t.exp.filter(r => !vazia(r)).map(lim), ...(t.dest || []).filter(r => !vazia(r)).map(r => ({ ...lim(r), bl: 'dest' }))], mat_aj: t.mat_aj || {}, mat_nome: t.mat_nome || {}, mat_rem: t.mat_rem || [], mat_extra: (t.mat_extra || []).filter(x => (x.d || '').trim()) };
 }
 
 // ---------- editor na tela ----------
@@ -104,9 +108,10 @@ function tcDesenha(pre) {
     <td>${inp('mod', i, 'lg', 'tc-lg', 'text')}</td><td>${sel('mod', i, 'cl', TC_CLASSES)}</td>
     <td class="tc-r g1">${sel('mod', i, 'pr', TC_POTS_RET, ' W')}</td><td class="num tc-r" data-perda="${i}"></td><td class="tc-r">${inp('mod', i, 'qr', 'tc-n')}</td><td class="num tc-r tc-calc" data-c="mod-r-${i}"></td>
     <td class="tc-m g1">${sel('mod', i, 'pn', POTS, ' W')}</td><td class="tc-m">${inp('mod', i, 'lm', 'tc-n')}</td><td class="tc-m">${inp('mod', i, 'irc', 'tc-irc', 'text')}</td><td class="tc-m">${inp('mod', i, 'qn', 'tc-n')}</td><td class="tc-m">${inp('mod', i, 'br', 'tc-n')}</td><td class="num tc-m tc-calc" data-c="mod-m-${i}"></td>${rem('mod', i)}</tr>`).join('');
-  const expRows = t.exp.map((r, i) => `<tr>
-    <td>${inp('exp', i, 'lg', 'tc-lg', 'text')}</td><td>${sel('exp', i, 'cl', TC_CLASSES)}</td>
-    <td>${sel('exp', i, 'pn', POTS, ' W')}</td><td>${inp('exp', i, 'lm', 'tc-n')}</td><td>${inp('exp', i, 'irc', 'tc-irc', 'text')}</td><td>${inp('exp', i, 'qn', 'tc-n')}</td><td>${inp('exp', i, 'br', 'tc-n')}</td><td class="num tc-calc" data-c="exp-${i}"></td>${rem('exp', i)}</tr>`).join('');
+  const novos = b => t[b].map((r, i) => `<tr>
+    <td>${inp(b, i, 'lg', 'tc-lg', 'text')}</td><td>${sel(b, i, 'cl', TC_CLASSES)}</td>
+    <td>${sel(b, i, 'pn', POTS, ' W')}</td><td>${inp(b, i, 'lm', 'tc-n')}</td><td>${inp(b, i, 'irc', 'tc-irc', 'text')}</td><td>${inp(b, i, 'qn', 'tc-n')}</td><td>${inp(b, i, 'br', 'tc-n')}</td><td class="num tc-calc" data-c="${b}-${i}"></td>${rem(b, i)}</tr>`).join('');
+  const expRows = novos('exp'), destRows = novos('dest');
   E.el.innerHTML = `
     <div class="tc-aviso" data-tc="aviso" hidden></div>
     <h3 class="tc-bloco">Modernização <span>troca de luminárias existentes</span></h3>
@@ -122,6 +127,11 @@ function tcDesenha(pre) {
       <tbody>${expRows || '<tr><td colspan="9" class="vazio">Sem linhas de expansão.</td></tr>'}</tbody>
       <tfoot><tr><td colspan="5">Total</td><td class="num" data-c="qE"></td><td></td><td class="num" data-c="pE"></td><td></td></tr></tfoot></table></div>
     <div class="total"><button type="button" class="btn peq" data-add="exp">+ Linha de expansão</button></div>
+    <h3 class="tc-bloco">Iluminação de destaque <span>praças, monumentos, fachadas · conta como destaque</span></h3>
+    <div class="tab-wrap"><table class="tc-t"><thead><tr><th>Logradouro</th><th>Classe</th><th>Potência</th><th>Lm/W</th><th>IRC</th><th>Qtd</th><th>Braço (m)</th><th class="num">Total</th><th></th></tr></thead>
+      <tbody>${destRows || '<tr><td colspan="9" class="vazio">Sem linhas de destaque.</td></tr>'}</tbody>
+      <tfoot><tr><td colspan="5">Total</td><td class="num" data-c="qD"></td><td></td><td class="num" data-c="pD"></td><td></td></tr></tfoot></table></div>
+    <div class="total"><button type="button" class="btn peq" data-add="dest">+ Linha de destaque</button></div>
     <div class="tc-duas"><div><h3 class="tc-bloco">Materiais utilizados <span>calculados · dá para corrigir</span></h3><div data-tc="mat"></div></div>
       <div><h3 class="tc-bloco">Vai para o processo <span>preenchido pela tabela</span></h3><div class="tc-resumo" data-tc="resumo"></div></div></div>`;
   E.el.querySelectorAll('.tc-i').forEach(x => {
@@ -144,8 +154,8 @@ function tcAtualiza(pre) {
     if (c) c.innerHTML = `<span class="tc-chip${pe ? '' : ' zero'}" title="Perda do reator de ${esc(r.pr)} W (automática)">${pe ? pe + ' W' : 'sem perda'}</span>`;
     set('mod-r-' + i, tcF(tcQ(r.qr) * (tcQ(r.pr) + pe)) + W); set('mod-m-' + i, tcF(tcQ(r.qn) * tcQ(r.pn)) + W);
   });
-  t.exp.forEach((r, i) => set('exp-' + i, tcF(tcQ(r.qn) * tcQ(r.pn)) + W));
-  set('qR', tcF(T.qR)); set('pR', tcF(T.pR) + W); set('qM', tcF(T.qM)); set('pM', tcF(T.pM) + W); set('qE', tcF(T.qE)); set('pE', tcF(T.pE) + W);
+  ['exp', 'dest'].forEach(b => t[b].forEach((r, i) => set(b + '-' + i, tcF(tcQ(r.qn) * tcQ(r.pn)) + W)));
+  set('qR', tcF(T.qR)); set('pR', tcF(T.pR) + W); set('qM', tcF(T.qM)); set('pM', tcF(T.pM) + W); set('qE', tcF(T.qE)); set('pE', tcF(T.pE) + W); set('qD', tcF(T.qD)); set('pD', tcF(T.pD) + W);
   set('red', T.qR ? `<span>Redução <b>${tcF(T.red)} W</b></span><span class="tc-pct">${(T.pct * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% a menos</span>` : '');
   // marca o que mudou em relação ao projeto (só no as built)
   if (E.base) el.querySelectorAll('.tc-i').forEach(x => { const r0 = E.base[x.dataset.b][+x.dataset.i]; x.classList.toggle('tc-dif', !r0 || String(r0[x.dataset.k] ?? '') !== String(t[x.dataset.b][+x.dataset.i][x.dataset.k] ?? '')); });
@@ -154,20 +164,20 @@ function tcAtualiza(pre) {
 }
 function tcResumo(pre, T) {
   const E = TCED[pre], t = E.t, el = E.el.querySelector('[data-tc="resumo"]'); if (!el) return;
-  const servico = pre === 'j' ? $('#j-serv')?.value : E.p?.tipo_servico, m = tcModalidades(t, servico);
+  const m = tcModalidades(t);
   const pot = Object.entries(T.pot).sort((a, b) => a[0] - b[0]).map(([w, q]) => `${q}× ${w} W`).join(', ') || '—';
   let dif = '';
   if (E.base) {
     const B = tcTotais(E.base), d = [];
-    if (B.qM + B.qE !== T.qM + T.qE) d.push(`pontos ${B.qM + B.qE} → <b>${T.qM + T.qE}</b>`);
-    if (B.pM + B.pE !== T.pM + T.pE) d.push(`potência instalada ${tcF(B.pM + B.pE)} W → <b>${tcF(T.pM + T.pE)} W</b>`);
+    if (B.qI !== T.qI) d.push(`pontos ${B.qI} → <b>${T.qI}</b>`);
+    if (B.pI !== T.pI) d.push(`potência instalada ${tcF(B.pI)} W → <b>${tcF(T.pI)} W</b>`);
     if (B.qR !== T.qR) d.push(`retiradas ${B.qR} → <b>${T.qR}</b>`);
     dif = `<p class="tc-difmsg${d.length ? '' : ' ok'}">${d.length ? 'Diferente do projeto: ' + d.join(' · ') + '. Os campos alterados ficam em laranja.' : '✓ Igual à tabela do projeto.'}</p>`;
   }
   el.innerHTML = `${dif}<div><span class="r">Potência aplicada</span><b>${pot}</b></div>
-    <div><span class="r">Total de pontos</span><b class="numero">${T.qM + T.qE}</b></div>
+    <div><span class="r">Total de pontos</span><b class="numero">${T.qI}</b></div>
     <div><span class="r">Pontos por modalidade</span><b>Modernização ${m.mod_mod} · Crescimento vegetativo ${m.mod_cv} · Destaque ${m.mod_dest}</b></div>
-    <div><span class="r">Potência instalada</span><b>${tcF(T.pM + T.pE)} W</b></div>`;
+    <div><span class="r">Potência instalada</span><b>${tcF(T.pI)} W</b></div>`;
 }
 function tcMatDesenha(pre) {
   const E = TCED[pre], t = E.t, el = E.el.querySelector('[data-tc="mat"]'); if (!el) return;
@@ -256,13 +266,13 @@ async function gerarTabelaCarga(p, t, o = {}) {
   txt(corta(end, FB, 14, LW - 90), M + 70, y - 20, { f: FB, sz: 14, cor: AZ });
   y -= 44;
   // cartões · bloco sem linhas não aparece no PDF
-  const temMod = t.mod.length > 0 || !t.exp.length, temExp = t.exp.length > 0;
+  const temMod = t.mod.length > 0 || !(t.exp.length || t.dest.length), temExp = t.exp.length > 0, temDest = t.dest.length > 0;
   {
-    const det = (a, b) => [temMod ? a : '', temExp ? b : ''].filter(Boolean).join(' · ');
+    const det = (a, b, c3) => [temMod ? a : '', temExp ? b : '', temDest ? c3 : ''].filter(Boolean).join(' · ');
     const ks = [
-      ['Pontos instalados', n(T.qM + T.qE), det(`${T.qM} modernização`, `${T.qE} cresc. vegetativo`), B && B.qM + B.qE !== T.qM + T.qE ? 'projeto: ' + n(B.qM + B.qE) : ''],
+      ['Pontos instalados', n(T.qI), det(`${T.qM} modernização`, `${T.qE} cresc. vegetativo`, `${T.qD} destaque`), B && B.qI !== T.qI ? 'projeto: ' + n(B.qI) : ''],
       ['Potência total retirada', n(T.pR) + ' W', `${T.qR} luminárias · com perda do reator`, B && B.pR !== T.pR ? 'projeto: ' + n(B.pR) + ' W' : ''],
-      ['Potência total instalada', n(T.pM + T.pE) + ' W', det(`${n(T.pM)} W modernização`, `${n(T.pE)} W cresc. vegetativo`), B && B.pM + B.pE !== T.pM + T.pE ? 'projeto: ' + n(B.pM + B.pE) + ' W' : ''],
+      ['Potência total instalada', n(T.pI) + ' W', det(`${n(T.pM)} W modernização`, `${n(T.pE)} W cresc. vegetativo`, `${n(T.pD)} W destaque`), B && B.pI !== T.pI ? 'projeto: ' + n(B.pI) + ' W' : ''],
       ['Redução na modernização', T.qR ? n(T.red) + ' W' : '—', T.qR ? (T.pct * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '% menos que o retirado' : 'sem retirada', '']].filter(k => temMod || !/retirada|Redução/.test(k[0]));   // sem modernização, só pontos e potência instalada
     const g = 10, w = (LW - (ks.length - 1) * g) / ks.length, h = 50;
     ks.forEach(([rot, val, sub, dif], i) => {
@@ -319,10 +329,11 @@ async function gerarTabelaCarga(p, t, o = {}) {
     { t: 'POTÊNCIA\n(W)', w: 52, al: 'r', g: 'r', v: r => n(r.pr) }, { t: 'PERDA\nREATOR (W)', w: 54, al: 'r', g: 'r', v: r => n(tcPerda(tcQ(r.pr))) }, { t: 'QTD', w: 38, al: 'r', g: 'r', v: r => n(r.qr) }, { t: 'TOTAL\n(W)', w: 60, al: 'r', g: 'r', calc: 1, v: r => n(tcQ(r.qr) * (tcQ(r.pr) + tcPerda(tcQ(r.pr)))) },
     { t: 'POTÊNCIA\n(W)', w: 52, al: 'r', g: 'i', v: r => n(r.pn) }, { t: 'LM/W', w: 44, al: 'r', g: 'i', v: r => r.lm || '—' }, { t: 'IRC', w: 40, al: 'c', g: 'i', v: r => r.irc || '—' }, { t: 'QTD', w: 38, al: 'r', g: 'i', v: r => n(r.qn) }, { t: 'BRAÇO\n(M)', w: 44, al: 'r', g: 'i', v: brc }, { t: 'TOTAL\n(W)', w: 86, al: 'r', g: 'i', calc: 1, v: r => n(tcQ(r.qn) * tcQ(r.pn)) }],
     t.mod, ['TOTAL', null, null, null, n(T.qR), n(T.pR), null, null, null, n(T.qM), null, n(T.pM)]);
-  if (temExp) tabela('Crescimento vegetativo', 'pontos novos', [
+  const colsNovos = () => [
     { t: 'LOGRADOURO', w: 0, v: r => r.lg }, { t: 'CLASSE', w: 42, al: 'c', v: r => r.cl },
-    { t: 'POTÊNCIA\n(W)', w: 52, al: 'r', v: r => n(r.pn) }, { t: 'LM/W', w: 44, al: 'r', v: r => r.lm || '—' }, { t: 'IRC', w: 40, al: 'c', v: r => r.irc || '—' }, { t: 'QTD', w: 38, al: 'r', v: r => n(r.qn) }, { t: 'BRAÇO\n(M)', w: 44, al: 'r', v: brc }, { t: 'TOTAL\n(W)', w: 86, al: 'r', calc: 1, v: r => n(tcQ(r.qn) * tcQ(r.pn)) }],
-    t.exp, ['TOTAL', null, null, null, null, n(T.qE), null, n(T.pE)]);
+    { t: 'POTÊNCIA\n(W)', w: 52, al: 'r', v: r => n(r.pn) }, { t: 'LM/W', w: 44, al: 'r', v: r => r.lm || '—' }, { t: 'IRC', w: 40, al: 'c', v: r => r.irc || '—' }, { t: 'QTD', w: 38, al: 'r', v: r => n(r.qn) }, { t: 'BRAÇO\n(M)', w: 44, al: 'r', v: brc }, { t: 'TOTAL\n(W)', w: 86, al: 'r', calc: 1, v: r => n(tcQ(r.qn) * tcQ(r.pn)) }];
+  if (temExp) tabela('Crescimento vegetativo', 'pontos novos', colsNovos(), t.exp, ['TOTAL', null, null, null, null, n(T.qE), null, n(T.pE)]);
+  if (temDest) tabela('Iluminação de destaque', 'pontos de destaque', colsNovos(), t.dest, ['TOTAL', null, null, null, null, n(T.qD), null, n(T.pD)]);
   // materiais (2 colunas) + luminárias por potência + assinatura
   const mat = tcMateriais(t), rh = 14, wm = 470, xr = M + wm + 24, wr = LW - wm - 24;
   const metade = Math.ceil(mat.length / 2), wc = (wm - 12) / 2, pots = Object.entries(T.pot).sort((a, b) => a[0] - b[0]);
@@ -350,7 +361,7 @@ async function gerarTabelaCarga(p, t, o = {}) {
     tr('POTÊNCIA', 'PONTOS', yr - 11, FB, AZ); yr -= 16;
     pots.forEach(([w, q]) => { tr(w + ' W', n(q), yr - 10, F, TX); yr -= rh; });
     pg.drawLine({ start: { x: xr, y: yr }, end: { x: xr + wr, y: yr }, thickness: .6, color: AZ });
-    tr('Total', n(T.qM + T.qE) + ' pontos', yr - 12, FB, AZ); yr -= 18;
+    tr('Total', n(T.qI) + ' pontos', yr - 12, FB, AZ); yr -= 18;
     pg.drawLine({ start: { x: xr + 20, y: yr - 24 }, end: { x: xr + wr - 20, y: yr - 24 }, thickness: .6, color: TX });
     txt(o.asbuilt ? 'Responsável pelo as built' : 'Responsável pelo projeto', xr, yr - 34, { sz: 7.5, cor: SV, al: 'c', w: wr });
   }
@@ -375,7 +386,7 @@ function geraXlsxCarga(p, t, asbuilt) {
   const altura = { 1: 30, 2: 20 };
   junta(1, 0, NC, 'PROJETO ' + p.numero.replace('/', '-') + (asbuilt ? ' - ASBUILT' : ''), S.tit);
   junta(2, 0, NC, [p.logradouro, p.bairro, p.zona ? 'ZONA ' + p.zona : ''].filter(Boolean).join(' - '), S.sub);
-  const temMod = t.mod.length > 0 || !t.exp.length, temExp = t.exp.length > 0;   // bloco sem linhas não aparece
+  const temMod = t.mod.length > 0 || !(t.exp.length || t.dest.length);   // bloco sem linhas não aparece
   let r = 3;
   if (temMod) {
     altura[r] = 22; junta(r, 0, NC, 'TABELA DE CARGA - MODERNIZAÇÃO', S.faixa); r += 2;
@@ -397,18 +408,19 @@ function geraXlsxCarga(p, t, asbuilt) {
     junta(r, 8, 11, 'POTÊNCIA REDUZIDA (W):', S.redR); put(r, 12, T.red, S.redN, `G${rp}-M${rp}`); r++;
     junta(r, 8, 11, 'PERCENTUAL REDUZIDO:', S.redR); put(r, 12, T.pct, S.pct, `IF(G${rp}=0,0,M${r - 1}/G${rp})`); r += 2;
   }
-  if (temExp) {   // crescimento vegetativo (mesmas colunas do padrão modernizado)
-    altura[r] = 22; junta(r, 0, NC, 'TABELA DE CARGA - CRESCIMENTO VEGETATIVO', S.faixa); r++;
+  [['exp', 'CRESCIMENTO VEGETATIVO', T.qE, T.pE], ['dest', 'ILUMINAÇÃO DE DESTAQUE', T.qD, T.pD]].forEach(([bl, nomeBl, qB, pB]) => {   // pontos novos (mesmas colunas do padrão modernizado)
+    if (!t[bl].length) return;
+    altura[r] = 22; junta(r, 0, NC, 'TABELA DE CARGA - ' + nomeBl, S.faixa); r++;
     junta(r, 0, 5, 'LOGRADOURO', S.cab); ['CLASSE', 'POTÊNCIA (W)', 'Lm/W', 'IRC', 'QTD', 'BRAÇO (M)', 'POTÊNCIA TOTAL (W)'].forEach((h, i) => put(r, 6 + i, h, S.cab)); altura[r] = 30; r++;
     const e0 = r;
-    t.exp.forEach(l => {
+    t[bl].forEach(l => {
       const pn = tcQ(l.pn), qn = tcQ(l.qn);
       junta(r, 0, 5, l.lg || '', S.txt); put(r, 6, l.cl || '', S.num); put(r, 7, pn, S.num); put(r, 8, l.lm === '' || l.lm == null ? null : (isNaN(+l.lm) ? l.lm : +l.lm), S.num); put(r, 9, l.irc || '', S.num); put(r, 10, qn, S.num); put(r, 11, tcQ(l.br) || null, S.num); put(r, 12, qn * pn, S.num, `H${r}*K${r}`); r++;
     });
     const eu = r - 1;
-    junta(r, 0, 9, 'QUANTIDADE INSTALADA', S.totR); put(r, 10, T.qE, S.totN, `SUM(K${e0}:K${eu})`); junta(r, 11, 12, null, S.totN); r++;
-    junta(r, 0, 11, 'POTÊNCIA TOTAL (W)', S.totR); put(r, 12, T.pE, S.totN, `SUM(M${e0}:M${eu})`); r += 2;
-  }
+    junta(r, 0, 9, 'QUANTIDADE INSTALADA', S.totR); put(r, 10, qB, S.totN, `SUM(K${e0}:K${eu})`); junta(r, 11, 12, null, S.totN); r++;
+    junta(r, 0, 11, 'POTÊNCIA TOTAL (W)', S.totR); put(r, 12, pB, S.totN, `SUM(M${e0}:M${eu})`); r += 2;
+  });
   // materiais
   junta(r, 0, 3, 'TABELA DE MATERIAIS UTILIZADOS', S.matT); r++;
   junta(r, 0, 2, 'DESCRIÇÃO', S.neg); put(r, 3, 'QTD', S.neg); r++;
@@ -487,7 +499,7 @@ function tcUsar(pre) {
   if (pre === 'j') t = p.tabela_carga;
   else { base = tcTemLinhas(p.tabela_carga) ? p.tabela_carga : null; t = tcTemLinhas(p.tabela_carga_asb) ? p.tabela_carga_asb : base; }
   t = tcNormaliza(t);
-  if (!t.mod.length && !t.exp.length) { if (/MODERNIZA/i.test(p.tipo_servico || '')) t.mod.push({ ...tcLinhaMod(), lg: p.logradouro || '' }); else t.exp.push({ ...tcLinhaExp(), lg: p.logradouro || '' }); }
+  if (!t.mod.length && !t.exp.length && !t.dest.length) { if (/MODERNIZA/i.test(p.tipo_servico || '')) t.mod.push({ ...tcLinhaMod(), lg: p.logradouro || '' }); else if (/DESTAQUE/i.test(p.tipo_servico || '')) t.dest.push({ ...tcLinhaExp(), lg: p.logradouro || '' }); else t.exp.push({ ...tcLinhaExp(), lg: p.logradouro || '' }); }
   $('#' + pre + '-tc-opc').hidden = true; $('#' + pre + '-tc-pdf').hidden = $('#' + pre + '-tc-xl').hidden = false;
   (pre === 'j' ? ['#j-sec-pot', '#j-sec-mod'] : ['#a-sec-pot']).forEach(s => $(s).hidden = true);   // potências e modalidades saem da tabela
   tcAbrir(pre, $('#' + pre + '-tc'), { p, t, base });
@@ -496,7 +508,7 @@ function tcUsar(pre) {
 // retorna null se não pode seguir, {} se a tela não usa a tabela
 function tcPreparar(pre, entregar, servico) {
   const E = TCED[pre]; if (!E) return {};
-  const t = tcParaGravar(E.t), faltas = tcFaltas(t);
+  const g = tcParaGravar(E.t), t = tcNormaliza(g), faltas = tcFaltas(t);   // g: como vai para o banco · t: separado por bloco
   if (!entregar && !tcTemLinhas(t)) return {};   // só salvando, com a tabela vazia: não mexe nas potências já gravadas (processos antigos)
   if (entregar && faltas.length) {
     tcAviso(pre, '<b>Falta na tabela de carga:</b> ' + faltas.slice(0, 4).map(esc).join(' · ') + (faltas.length > 4 ? ' …' : ''));
@@ -504,7 +516,7 @@ function tcPreparar(pre, entregar, servico) {
     toast('Complete a tabela de carga antes de ' + (pre === 'a' ? 'concluir' : 'entregar'), true); return null;
   }
   tcAviso(pre, '');
-  return { tabela: t, campos: { potencias: tcPotencias(t), ...tcModalidades(t, servico) } };
+  return { tabela: g, campos: { potencias: tcPotencias(t), ...tcModalidades(t) } };
 }
 async function tcGravar(pre, p, prep) {
   if (!prep || !prep.tabela) return;
