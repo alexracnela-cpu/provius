@@ -8,7 +8,7 @@ function agIniciar() {
   caixaPdf('#ag-arq', '#ag-up');
   $$('#ag-modo button').forEach(b => b.onclick = () => agModo(b.dataset.m));
   $('#ag-todos').onchange = e => { AG.sel = e.target.checked ? new Set(filaDe(5).map(d => d.id)) : new Set(); agLista(); };
-  $('#ag-carta').onclick = abrirCarta; $('#ag-enviar').onclick = registrarEnvio;
+  $('#ag-carta').onclick = abrirCarta; $('#ag-enviar').onclick = registrarEnvio; $('#ag-unidos-bt').onclick = agUnidosTodos;
   $('#ct-gerar').onclick = cartaPrevia; ['#ct-num', '#ct-data', '#ct-dest', '#ct-att', '#ct-attc', '#ct-ass', '#ct-ref', '#ct-link', '#ct-nome', '#ct-cargo'].forEach(s => $(s).addEventListener('change', cartaPrevia));
   AG.vc = criaVisor({ area: '#ct-area', canvas: '#ct-cv' });
   $('#ct-baixar').onclick = () => { if (!AG.carta) return; if (!$('#ct-link').value.trim()) { toast('Cole o link de acesso antes', true); return; } baixarBlob('carta-' + $('#ct-num').value.replace(/\W+/g, '-') + '.pdf', new Blob([AG.carta], { type: 'application/pdf' })); };
@@ -39,11 +39,15 @@ function agLista() {
   $('#ag-lista').innerHTML = f.map(d => { const dd = diasDesde(d.etapa_desde);
     return `<tr><td><input type="checkbox" data-id="${d.id}" ${AG.sel.has(d.id) ? 'checked' : ''} aria-label="Selecionar ${esc(d.numero)}"></td><td class="nn"><button type="button" class="link-pdf" data-det="${d.id}">${esc(d.numero)}</button>${seloUrg(d)}</td><td>${esc(d.logradouro)}</td><td>${esc(d.bairro || '')}</td><td><span class="etq ag-etq">${esc(agServ(d))}</span></td><td class="num">${d.total_pontos}</td>
       <td>${dd === null ? '—' : `<span class="pill ${dd > 15 ? 'dev' : 'dias'}" style="margin:0">${dd} dia${dd === 1 ? '' : 's'}</span>`}</td>
-      <td class="ag-arqs"><button class="link-pdf" type="button" data-ab="${d.id}">As built</button>${d.tipo === 'R' ? '' : ` · <button class="link-pdf" type="button" data-tc="${d.id}">Tabela de carga</button>`}</td></tr>`; }).join('') || '<tr><td colspan="8" class="vazio">Nenhum processo pronto para enviar.</td></tr>';
+      <td class="ag-arqs"><button class="link-pdf" type="button" data-ab="${d.id}">As built</button>${d.tipo === 'R' ? '' : ` · <button class="link-pdf" type="button" data-tc="${d.id}">Tabela de carga</button>`} · <button class="link-pdf ag-uni" type="button" data-uni="${d.id}" title="As built + tabela de carga num PDF só">⬇ Unido</button></td></tr>`; }).join('') || '<tr><td colspan="8" class="vazio">Nenhum processo pronto para enviar.</td></tr>';
   $$('#ag-lista input').forEach(c => c.onchange = () => { const id = +c.dataset.id; c.checked ? AG.sel.add(id) : AG.sel.delete(id); agLista(); });
   $$('#ag-lista [data-det]').forEach(b => b.onclick = () => detalhe(+b.dataset.det));
   $$('#ag-lista [data-ab]').forEach(b => b.onclick = async () => { const { data } = await sb.from('arquivos').select('*').eq('processo_id', +b.dataset.ab).eq('tipo', 'asbuilt').order('em', { ascending: false }).limit(1); if (data && data[0]) verArquivo(data[0], 'As built'); else toast('Sem PDF de as built (processo do histórico).', true); });
   $$('#ag-lista [data-tc]').forEach(b => b.onclick = () => tcPdfDoProcesso(+b.dataset.tc));
+  $$('#ag-lista [data-uni]').forEach(b => b.onclick = () => agUnidoBaixar(+b.dataset.uni));
+  const nU = AG.sel.size || f.length;
+  $('#ag-unidos').hidden = !f.length;
+  $('#ag-unidos-bt').textContent = '⬇ Baixar PDFs unidos ' + (AG.sel.size ? 'dos selecionados' : 'de todos') + ' (' + nU + ')';
   const sp = f.filter(d => AG.sel.has(d.id)).reduce((a, d) => a + d.total_pontos, 0);
   $('#ag-cont').textContent = AG.sel.size ? AG.sel.size + ' de ' + f.length + ' selecionados · ' + fmt(sp) + ' pontos' : f.length + ' processo' + (f.length === 1 ? '' : 's');
   $('#ag-enviar').textContent = AG.sel.size ? 'Registrar envio à AGEMAN (' + AG.sel.size + ')' : 'Registrar envio à AGEMAN';
@@ -87,6 +91,52 @@ async function registrarEnvio() {
   toast(ids.length + ' processo' + (ids.length > 1 ? 's' : '') + ' enviado' + (ids.length > 1 ? 's' : '') + ' à AGEMAN em ' + dataBR(data));
   AG.sel.clear(); AG.cartaPronta = null; AG.ant = null; $('#ag-up')._limpa(); $('#ag-of').value = ''; $('#ct-num').value = ''; $('#ct-link').value = '';
   await recarregar(); agAbrir();
+}
+
+// ---------- PDF unido: as built enviado + tabela de carga (uma página atrás da outra) ----------
+const agNomeArq = p => p.numero.replace(/\//g, '-') + '.pdf';
+async function agUnido(id) {
+  const p = await carregarProcesso(id), faltou = [];
+  const out = await PDFLib.PDFDocument.create(); out.setTitle('As built e tabela de carga ' + p.numero); out.setProducer('Provius');
+  const asb = ultimoArquivo(p, 'asbuilt');
+  if (asb) {
+    const src = await PDFLib.PDFDocument.load(await bytesDe(asb.caminho), { ignoreEncryption: true });
+    (await out.copyPages(src, src.getPageIndices())).forEach(pg => out.addPage(pg));
+  } else faltou.push('as built');
+  const temAsb = tcTemLinhas(p.tabela_carga_asb), t = temAsb ? p.tabela_carga_asb : p.tabela_carga;
+  if (p.tipo !== 'R' && tcTemLinhas(t)) {
+    const r = await gerarTabelaCarga(p, t, { asbuilt: temAsb, base: temAsb ? p.tabela_carga : null, por: EU?.nome });
+    const src = await PDFLib.PDFDocument.load(r.bytes);
+    (await out.copyPages(src, src.getPageIndices())).forEach(pg => out.addPage(pg));
+  } else if (p.tipo !== 'R') faltou.push('tabela de carga');
+  if (!out.getPageCount()) return { p, bytes: null, faltou };
+  return { p, bytes: await out.save(), faltou };
+}
+async function agUnidoBaixar(id) {
+  const r = await tarefa(() => agUnido(id)); if (!r) return;
+  if (!r.bytes) { toast(r.p.numero + ': sem as built e sem tabela de carga no Provius.', true); return; }
+  baixarBlob(agNomeArq(r.p), new Blob([r.bytes], { type: 'application/pdf' }));
+  if (r.faltou.length) toast(r.p.numero + ': baixado sem ' + r.faltou.join(' e ') + ' (não está no Provius).', true);
+}
+// todos da lista (ou só os selecionados) num ZIP, um PDF por processo
+async function agUnidosTodos() {
+  const lista = filaDe(5).filter(d => !AG.sel.size || AG.sel.has(d.id)); if (!lista.length) return;
+  const arqs = {}, avisos = [];
+  ocupado(true);
+  try {
+    for (const [i, d] of lista.entries()) {
+      toast(`Juntando ${i + 1} de ${lista.length}: ${d.numero}…`);
+      try {
+        const r = await agUnido(d.id);
+        if (r.bytes) arqs[agNomeArq(r.p)] = r.bytes; else avisos.push(d.numero + ' (sem arquivos)');
+        if (r.bytes && r.faltou.length) avisos.push(d.numero + ' sem ' + r.faltou.join(' e '));
+      } catch (e) { console.error(e); avisos.push(d.numero + ' (erro: ' + msgErro(e) + ')'); }
+    }
+  } finally { ocupado(false); }
+  const n = Object.keys(arqs).length;
+  if (!n) { toast('Nenhum PDF para juntar: ' + avisos.join(' · '), true); return; }
+  baixarBlob('ageman-as-built-' + hojeISO() + '.zip', new Blob([zipStore(arqs)], { type: 'application/zip' }));
+  toast(n + ' PDF' + (n > 1 ? 's' : '') + ' unido' + (n > 1 ? 's' : '') + ' no ZIP' + (avisos.length ? ' · atenção: ' + avisos.join(' · ') : ''), !!avisos.length);
 }
 
 // ---------- envios anteriores ----------

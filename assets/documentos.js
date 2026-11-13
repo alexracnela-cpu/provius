@@ -260,7 +260,7 @@ function crc32(b) { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = _
 function zipStore(files) {
   const enc = new TextEncoder(), partes = [], central = []; let off = 0;
   for (const [nome, txt] of Object.entries(files)) {
-    const nb = enc.encode(nome), db = enc.encode(txt), crc = crc32(db);
+    const nb = enc.encode(nome), db = typeof txt === 'string' ? enc.encode(txt) : txt, crc = crc32(db);
     const h = new DataView(new ArrayBuffer(30)); h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint32(14, crc, true); h.setUint32(18, db.length, true); h.setUint32(22, db.length, true); h.setUint16(26, nb.length, true);
     partes.push(new Uint8Array(h.buffer), nb, db);
     const c = new DataView(new ArrayBuffer(46)); c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint32(16, crc, true); c.setUint32(20, db.length, true); c.setUint32(24, db.length, true); c.setUint16(28, nb.length, true); c.setUint32(42, off, true);
