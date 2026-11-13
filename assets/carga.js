@@ -258,9 +258,9 @@ async function gerarTabelaCarga(p, t, o = {}) {
   // cartões
   {
     const ks = [
-      ['Pontos instalados', n(T.qM + T.qE), `${T.qM} modernização · ${T.qE} expansão`, B && B.qM + B.qE !== T.qM + T.qE ? 'projeto: ' + n(B.qM + B.qE) : ''],
+      ['Pontos instalados', n(T.qM + T.qE), `${T.qM} modernização · ${T.qE} cresc. vegetativo`, B && B.qM + B.qE !== T.qM + T.qE ? 'projeto: ' + n(B.qM + B.qE) : ''],
       ['Potência retirada', n(T.pR) + ' W', `${T.qR} luminárias · com perda do reator`, B && B.pR !== T.pR ? 'projeto: ' + n(B.pR) + ' W' : ''],
-      ['Potência instalada', n(T.pM + T.pE) + ' W', `${n(T.pM)} W modernização · ${n(T.pE)} W expansão`, B && B.pM + B.pE !== T.pM + T.pE ? 'projeto: ' + n(B.pM + B.pE) + ' W' : ''],
+      ['Potência instalada', n(T.pM + T.pE) + ' W', `${n(T.pM)} W modernização · ${n(T.pE)} W cresc. vegetativo`, B && B.pM + B.pE !== T.pM + T.pE ? 'projeto: ' + n(B.pM + B.pE) + ' W' : ''],
       ['Redução na modernização', T.qR ? n(T.red) + ' W' : '—', T.qR ? (T.pct * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '% menos que o retirado' : 'sem retirada', '']];
     const g = 10, w = (LW - 3 * g) / 4, h = 50;
     ks.forEach(([rot, val, sub, dif], i) => {
@@ -317,7 +317,7 @@ async function gerarTabelaCarga(p, t, o = {}) {
     { t: 'POTÊNCIA\n(W)', w: 52, al: 'r', g: 'r', v: r => n(r.pr) }, { t: 'PERDA\nREATOR (W)', w: 54, al: 'r', g: 'r', v: r => n(tcPerda(tcQ(r.pr))) }, { t: 'QTD', w: 38, al: 'r', g: 'r', v: r => n(r.qr) }, { t: 'TOTAL\n(W)', w: 60, al: 'r', g: 'r', calc: 1, v: r => n(tcQ(r.qr) * (tcQ(r.pr) + tcPerda(tcQ(r.pr)))) },
     { t: 'POTÊNCIA\n(W)', w: 52, al: 'r', g: 'i', v: r => n(r.pn) }, { t: 'LM/W', w: 44, al: 'r', g: 'i', v: r => r.lm || '—' }, { t: 'IRC', w: 40, al: 'c', g: 'i', v: r => r.irc || '—' }, { t: 'QTD', w: 38, al: 'r', g: 'i', v: r => n(r.qn) }, { t: 'BRAÇO\n(M)', w: 44, al: 'r', g: 'i', v: brc }, { t: 'TOTAL\n(W)', w: 86, al: 'r', g: 'i', calc: 1, v: r => n(tcQ(r.qn) * tcQ(r.pn)) }],
     t.mod, ['TOTAL', null, null, null, n(T.qR), n(T.pR), null, null, null, n(T.qM), null, n(T.pM)]);
-  tabela('Expansão', 'pontos novos · crescimento vegetativo', [
+  tabela('Crescimento vegetativo', 'pontos novos', [
     { t: 'LOGRADOURO', w: 0, v: r => r.lg }, { t: 'CLASSE', w: 42, al: 'c', v: r => r.cl },
     { t: 'POTÊNCIA\n(W)', w: 52, al: 'r', v: r => n(r.pn) }, { t: 'LM/W', w: 44, al: 'r', v: r => r.lm || '—' }, { t: 'IRC', w: 40, al: 'c', v: r => r.irc || '—' }, { t: 'QTD', w: 38, al: 'r', v: r => n(r.qn) }, { t: 'BRAÇO\n(M)', w: 44, al: 'r', v: brc }, { t: 'TOTAL\n(W)', w: 86, al: 'r', calc: 1, v: r => n(tcQ(r.qn) * tcQ(r.pn)) }],
     t.exp, ['TOTAL', null, null, null, null, n(T.qE), null, n(T.pE)]);
