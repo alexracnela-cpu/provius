@@ -2,7 +2,7 @@
 let TELA = 'todos';
 const TELAS = {
   todos: { abrir: todosAbrir }, pedido: { abrir: pedidoAbrir, setor: 'Engenharia' }, projetos: { abrir: projetosAbrir, setor: 'Projetos' },
-  exe: { abrir: execAbrir, setor: 'Engenharia' }, cad: { abrir: cadAbrir, setor: 'Cadastro' }, asb: { abrir: asbAbrir, setor: 'Projetos' }, hist: { abrir: histAbrir }, saldo: { abrir: saldoAbrir, gerencia: true }, usuarios: { abrir: usuariosAbrir, admin: true }, banco: { abrir: bancoAbrir, admin: true }
+  exe: { abrir: execAbrir, setor: 'Engenharia' }, cad: { abrir: cadAbrir, setor: 'Cadastro' }, asb: { abrir: asbAbrir, setor: 'Projetos' }, ag: { abrir: agAbrir, setor: 'Projetos' }, hist: { abrir: histAbrir }, saldo: { abrir: saldoAbrir, gerencia: true }, usuarios: { abrir: usuariosAbrir, admin: true }, banco: { abrir: bancoAbrir, admin: true }
 };
 const pode = t => { const x = TELAS[t]; if (!x || !EU) return false; if (x.admin) return EU.admin; if (x.gerencia) return EU.admin || EU.setor === 'Gerência'; /* Saldo de Itens: só administrador e gerência */ return !x.setor || EU.admin || EU.setor === x.setor; };
 
@@ -173,6 +173,14 @@ async function detalhe(id) {
   const hist = p.movimentos.length ? `<ul class="hist" style="padding:0">${p.movimentos.map(m => `<li><span>${dataBR(m.em)}</span><b style="font-weight:500">${esc(m.por_nome || '')}: ${esc(textoMov(m))}</b></li>`).join('')}</ul>` : '<p class="ajuda" style="margin:0">Sem movimentos registrados (histórico da planilha).</p>';
   $('#det-corpo').innerHTML = `<div class="resumo" style="padding:0">${info}</div>${p.cancelado ? `<p class="faixa-dev" style="margin:0"><b>CANCELADO</b> · ${esc(p.cancel_motivo || '')}${p.cancel_texto ? ': ' + esc(p.cancel_texto) : ''}</p>` : passos}<div class="det-sec"><h4>Arquivos</h4>${arqs}</div><div class="det-sec"><h4>Histórico</h4>${hist}</div>`;
   $$('#det-corpo [data-a]').forEach(b => b.onclick = () => verArquivo(p.arquivos.find(a => String(a.id) === b.dataset.a), p.numero));
+  // tabela de carga (gerada na hora, a partir do que está gravado)
+  const tcs = [[p.tabela_carga, false, 'do projeto'], [p.tabela_carga_asb, true, 'do as built']].filter(x => tcTemLinhas(x[0]));
+  if (tcs.length) {
+    const box = document.createElement('div'); box.className = 'arq-lista'; box.style.padding = '8px 0 0';
+    box.innerHTML = tcs.map((x, i) => `<button type="button" data-tcd="${i}"><b>PDF</b>Tabela de carga ${x[2]}<small>gerada pelo Provius${x[0].por ? ' · ' + esc(x[0].por) : ''}${x[0].em ? ' · ' + dataBR(x[0].em) : ''}</small></button>`).join('');
+    $('#det-corpo .det-sec').appendChild(box);
+    box.querySelectorAll('[data-tcd]').forEach(b => b.onclick = () => { const x = tcs[+b.dataset.tcd]; tcPdfAbrir(p, x[0], x[1], x[1] ? p.tabela_carga : null); });
+  }
   const bt = $('#det-abrir'); const aba = !p.cancelado && p.etapa < 6 ? ETAPAS[p.etapa].aba : null;
   if (p.cancelado && (EU.admin || EU.setor === 'Projetos')) { bt.hidden = false; bt.textContent = 'Reativar processo'; bt.onclick = async () => { const r = await tarefa(() => rpc('reativar', { p_id: p.id }).then(() => true), 'Processo reativado'); if (r) { fechaModal('#modal-det'); await recarregar(); } }; }
   else if (aba && pode(aba)) { bt.hidden = false; bt.textContent = 'Abrir na fila de ' + ETAPAS[p.etapa].setor + ' →'; bt.onclick = () => { fechaModal('#modal-det'); TELA = aba; abrirTela(aba); const f = { projetos: projetosAbrir, exe: execAbrir, cad: cadAbrir, asb: asbAbrir }[aba]; if (f && p.etapa < 5) f(p.id); }; }
@@ -258,7 +266,7 @@ $('#dv-ok').onclick = confirmaDevolver; $('#c-ok').onclick = confirmaCancelar;
 (async function iniciar() {
   pintaTema();
   if (!CONFIGURADO) { aviso('O Provius ainda não foi ligado ao banco de dados. Preencha o arquivo assets/config.js com os dados do Supabase.'); return; }
-  pedidoIniciar(); projetosIniciar(); execIniciar(); cadIniciar(); asbIniciar(); relIniciar(); usuariosIniciar(); saldoIniciar(); bancoIniciar(); histIniciar();
+  pedidoIniciar(); projetosIniciar(); execIniciar(); cadIniciar(); asbIniciar(); tcIniciar(); agIniciar(); relIniciar(); usuariosIniciar(); saldoIniciar(); bancoIniciar(); histIniciar();
   const erroLink = /error_code=([^&]+)/.exec(HASH0)?.[1], tipoLink = /type=(invite|recovery|signup|magiclink)/.exec(HASH0)?.[1];
   if (erroLink) { history.replaceState(null, '', location.pathname); aviso(/expired/.test(erroLink) ? 'Este link venceu. Peça ao administrador um novo convite (ou use "Esqueci a senha").' : 'O link não é mais válido. Peça um novo convite ao administrador.', true); return; }
   sb.auth.onAuthStateChange((ev, ses) => { if (ev === 'PASSWORD_RECOVERY') telaSenha('recovery', ses?.user?.email); });

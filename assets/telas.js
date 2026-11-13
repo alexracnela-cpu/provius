@@ -141,7 +141,7 @@ function projetosFila() {
 function projetosModo(r) {
   const eu = !!r.meu, el = $('#j-trava'), outro = esc(r.nome || 'outra pessoa');
   $('#j-form').classList.toggle('so-leitura', !eu);
-  $$('#j-form input, #j-form select, #j-form textarea, #j-form button').forEach(x => { if (['j-croqui', 'j-ver-proj', 'j-assumir'].includes(x.id)) return; x.disabled = !eu; });
+  $$('#j-form input, #j-form select, #j-form textarea, #j-form button').forEach(x => { if (['j-croqui', 'j-ver-proj', 'j-assumir', 'j-tc-pdf', 'j-tc-xl'].includes(x.id)) return; x.disabled = !eu; });
   ['#j-canc', '#j-salvar', '#j-ok'].forEach(b => $(b).title = eu ? '' : 'Processo em edição por ' + (r.nome || 'outra pessoa'));
   $('#j-assumir').hidden = eu || SEM_TRAVA;
   if (SEM_TRAVA) { el.hidden = true; return; }
@@ -173,6 +173,7 @@ async function projetosAbrir(idSel) {
   if (ja) $('#j-ver-proj').onclick = () => verArquivo(ja, 'Projeto ' + p.numero);
   $('#j-ok').textContent = 'Entregar para Engenharia →';   // já executado ou não, o projeto sempre vai para a Engenharia
   await itensProjeto(p); if (seq !== PJ.seq) return;
+  tcTela('j', p);   // depois dos itens: a tabela de carga decide se potências e modalidades aparecem
   projetosModo(trava);
 }
 // potências e modalidades: o mesmo editor serve à Tela 2 (pre 'j') e ao As built (pre 'a')
@@ -201,12 +202,15 @@ async function projetosGravar(entregar) {
   const campos = { tipo_servico: $('#j-serv').value, origem: $('#j-origem').value, ref_pedido: $('#j-ref').value.trim(), logradouro: $('#j-logr').value.trim(),
     bairro: $('#j-bairro').value, ja_executado: $('input[name=j-exec]:checked')?.value === 'sim', potencias: ehR ? {} : potLer(),
     mod_cv: ehR ? 0 : +$('#j-cv').value || 0, mod_mod: ehR ? 0 : +$('#j-mo').value || 0, mod_dest: ehR ? 0 : +$('#j-de').value || 0, obs_projetos: $('#j-obs').value.trim() };
+  const tc = ehR ? {} : tcPreparar('j', entregar, campos.tipo_servico); if (!tc) return;   // tabela de carga: potências e modalidades saem dela
+  Object.assign(campos, tc.campos || {});
   if (ehR) { const ok = await tarefa(() => itensGravar(p, entregar)); if (!ok) return; }
   const arq = $('#j-up')._arqs[0];
   const urg = $('input[name=j-urg]:checked')?.value === 'sim';
   if (urg !== !!p.urgente && await marcarUrgente(p.id, urg)) p.urgente = urg;
   const r = await tarefa(async () => {
     if (arq) { const a = await enviarArquivo('processos/' + p.id, 'projeto', arq); await rpc('registrar_arquivo', { p_id: p.id, p_tipo: 'projeto', p_caminho: a.caminho, p_nome: a.nome, p_tamanho: a.tamanho }); $('#j-up')._limpa(); }
+    await tcGravar('j', p, tc);
     if (entregar) return rpc('entregar', { p_id: p.id, p_campos: campos });
     await rpc('salvar', { p_id: p.id, p_campos: campos }); return { salvo: true };
   });
@@ -318,10 +322,11 @@ async function cadGravar(entregar) {
   await recarregar(); cadAbrir(r.salvo ? p.id : null);
 }
 
-// ================= 5 · AS BUILT E AGEMAN (Projetos) =================
-const AB = { fila: [], at: 0, p: null, sel: new Set(), visor: null, carta: null };
+// ================= 5 · AS BUILT (Projetos) =================
+// O envio à AGEMAN fica na aba 6 (ageman.js).
+const AB = { fila: [], at: 0, p: null, visor: null };
 function asbIniciar() {
-  caixaPdf('#a-arq', '#a-up'); caixaPdf('#ag-arq', '#ag-up');
+  caixaPdf('#a-arq', '#a-up');
   AB.visor = criaVisor({ area: '#v-area', canvas: '#v-cv', zoom: '#v-z', menos: '#v-menos', mais: '#v-mais', ajusta: '#v-ajusta' });
   $('#v-cheia').onclick = async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else { await $('#v-area').requestFullscreen(); setTimeout(AB.visor.desenha, 150); } } catch (e) { toast('Tela cheia não disponível aqui', true); } };
   document.addEventListener('fullscreenchange', () => setTimeout(AB.visor.desenha, 150));
@@ -332,22 +337,12 @@ function asbIniciar() {
   $('#a-addpot').onclick = () => { potLinha(50, '', 'a'); potSoma('a'); };
   $$('.a-mod').forEach(i => i.oninput = () => potSoma('a'));
   $('#a-pot-abre').onclick = () => asbPotEditar(!AB.potEd);
-  $('#ag-todos').onchange = e => { AB.sel = e.target.checked ? new Set(filaDe(5).map(d => d.id)) : new Set(); agLista(); };
-  $('#ag-carta').onclick = abrirCarta; $('#ag-enviar').onclick = registrarEnvio;
-  $('#ct-gerar').onclick = cartaPrevia; ['#ct-num', '#ct-data', '#ct-dest', '#ct-att', '#ct-attc', '#ct-ass', '#ct-ref', '#ct-link', '#ct-nome', '#ct-cargo'].forEach(s => $(s).addEventListener('change', cartaPrevia));
-  AB.vc = criaVisor({ area: '#ct-area', canvas: '#ct-cv' });
-  $('#ct-baixar').onclick = () => { if (!AB.carta) return; if (!$('#ct-link').value.trim()) { toast('Cole o link de acesso antes', true); return; } baixarBlob('carta-' + $('#ct-num').value.replace(/\W+/g, '-') + '.pdf', new Blob([AB.carta], { type: 'application/pdf' })); };
-  $('#ct-anexar').onclick = () => { if (!AB.carta) return; if (!$('#ct-link').value.trim()) { $('#ct-link').closest('.campo').classList.add('invalido'); toast('Cole o link de acesso antes de usar a carta', true); return; }
-    $('#ag-of').value = $('#ct-num').value; $('#ag-data').value = $('#ct-data').value; AB.cartaPronta = { bytes: AB.carta, num: $('#ct-num').value, link: $('#ct-link').value.trim() };
-    fechaModal('#modal-carta'); toast('Carta pronta. Ela é guardada junto com o registro do envio.'); };
 }
 async function asbAbrir(idSel) {
   AB.fila = filaDe(4); const i = idSel ? AB.fila.findIndex(p => p.id === idSel) : AB.fila.findIndex(p => p.id === AB.p?.id); AB.at = Math.max(0, i);
   $('#a-form').hidden = !AB.fila.length; $('#a-vazio').hidden = !!AB.fila.length;
   $('#a-fila').innerHTML = AB.fila.map((p, i) => itemFila(p, i, AB.at)).join('') || '<p class="vazio">Fila vazia.</p>';
   $$('#a-fila .item').forEach(b => b.onclick = () => { AB.at = +b.dataset.i; asbAbrir(AB.fila[AB.at].id); });
-  if (!$('#ag-data').value) $('#ag-data').value = hojeISO();
-  agLista();
   if (!AB.fila.length) return;
   const p = await tarefa(() => carregarProcesso(AB.fila[AB.at].id)); if (!p) return; AB.p = p;
   $('#a-tit').textContent = p.numero; faixaDevolvido($('#a-dev-faixa'), p);
@@ -359,7 +354,7 @@ async function asbAbrir(idSel) {
   $('#a-ok').textContent = naoAdq(p) ? 'Concluir processo (não adquirido, sem AGEMAN) ✓' : 'Concluir as built → pronto p/ AGEMAN';
   $('#a-obs').value = p.obs_asbuilt || ''; $('#a-up')._limpa();
   $('#a-sec-pot').hidden = p.tipo === 'R';   // R- usa os itens de reequilíbrio, não potências
-  asbPotResumo(p); potPreenche(p, 'a'); asbPotEditar(false);
+  asbPotResumo(p); potPreenche(p, 'a'); asbPotEditar(false); tcTela('a', p);
   AB.visor.limpa(); $('#v-fonte').textContent = pl ? 'Carregando…' : 'Sem PDF de plaquetas neste processo.';
   if (pl) tarefa(async () => { await AB.visor.abrir(await bytesDe(pl.caminho), pl.nome); $('#v-fonte').textContent = pl.nome + ' · enviado por ' + (pl.por_nome || '') + ' em ' + dataHora(pl.em); });
 }
@@ -382,60 +377,28 @@ function asbPotCampos(p) {
   const mudou = !igual(pw, p.potencias || {}) || c.mod_cv !== (p.mod_cv || 0) || c.mod_mod !== (p.mod_mod || 0) || c.mod_dest !== (p.mod_dest || 0);
   return mudou ? c : {};
 }
+// com a tabela de carga: só manda potências e modalidades se mudaram (o histórico registra só correções de verdade)
+function asbTcCampos(p, c) {
+  const a = c.potencias, b = p.potencias || {}, ka = Object.keys(a), kb = Object.keys(b).filter(k => +b[k] > 0);
+  const igual = ka.length === kb.length && ka.every(k => +a[k] === +b[k]) && c.mod_cv === (p.mod_cv || 0) && c.mod_mod === (p.mod_mod || 0) && c.mod_dest === (p.mod_dest || 0);
+  return igual ? {} : c;
+}
 async function asbGravar(entregar) {
   const p = AB.p; if (!p) return; const arq = $('#a-up')._arqs[0];
-  const pot = asbPotCampos(p);
-  if (pot.potencias && !potConfere('a').ok) { $('#a-pot-ed').scrollIntoView({ behavior: 'smooth', block: 'center' }); toast('As modalidades precisam somar igual ao total das potências', true); return; }
+  const tc = naoAdq(p) ? {} : tcPreparar('a', entregar, p.tipo_servico); if (!tc) return;
+  const pot = tc.campos ? asbTcCampos(p, tc.campos) : asbPotCampos(p);   // com a tabela, potências e modalidades saem dela
+  if (pot.potencias && !tc.campos && !potConfere('a').ok) { $('#a-pot-ed').scrollIntoView({ behavior: 'smooth', block: 'center' }); toast('As modalidades precisam somar igual ao total das potências', true); return; }
   const r = await tarefa(async () => {
     if (arq) { const a = await enviarArquivo('processos/' + p.id, 'asbuilt', arq); await rpc('registrar_arquivo', { p_id: p.id, p_tipo: 'asbuilt', p_caminho: a.caminho, p_nome: a.nome, p_tamanho: a.tamanho }); $('#a-up')._limpa(); }
+    await tcGravar('a', p, tc);
     const campos = { obs_asbuilt: $('#a-obs').value.trim(), ...pot };
     if (entregar) return rpc('entregar', { p_id: p.id, p_campos: campos });
     await rpc('salvar', { p_id: p.id, p_campos: campos }); return { salvo: true };
   });
   if (!r) return;
-  toast(r.salvo ? 'Alterações salvas' : naoAdq(p) ? p.numero + ' concluído (não adquirido, não vai à AGEMAN)' : p.numero + ' pronto para enviar à AGEMAN');
+  toast(r.salvo ? 'Alterações salvas' : naoAdq(p) ? p.numero + ' concluído (não adquirido, não vai à AGEMAN)' : p.numero + ' pronto · está na aba AGEMAN para enviar');
   await recarregar(); asbAbrir(r.salvo ? p.id : null);
 }
-function agLista() {
-  const f = filaDe(5); AB.sel = new Set([...AB.sel].filter(id => f.some(d => d.id === id)));
-  $('#ag-lista').innerHTML = f.map(d => `<tr><td><input type="checkbox" data-id="${d.id}" ${AB.sel.has(d.id) ? 'checked' : ''} aria-label="Selecionar ${esc(d.numero)}"></td><td class="nn">${esc(d.numero)}</td><td>${esc(d.logradouro)}</td><td>${esc(d.bairro || '')}</td><td class="num">${d.total_pontos}</td><td><button class="link-pdf" type="button" data-ab="${d.id}">abrir</button></td></tr>`).join('') || '<tr><td colspan="6" class="vazio">Nada pronto para enviar.</td></tr>';
-  $$('#ag-lista input').forEach(c => c.onchange = () => { const id = +c.dataset.id; c.checked ? AB.sel.add(id) : AB.sel.delete(id); agLista(); });
-  $$('#ag-lista [data-ab]').forEach(b => b.onclick = async () => { const { data } = await sb.from('arquivos').select('*').eq('processo_id', +b.dataset.ab).eq('tipo', 'asbuilt').order('em', { ascending: false }).limit(1); if (data && data[0]) verArquivo(data[0], 'As built'); else toast('Sem PDF de as built (processo do histórico).', true); });
-  const sp = f.filter(d => AB.sel.has(d.id)).reduce((a, d) => a + d.total_pontos, 0);
-  $('#ag-cont').textContent = AB.sel.size ? AB.sel.size + ' de ' + f.length + ' selecionados · ' + sp + ' pontos' : f.length + ' processo' + (f.length === 1 ? '' : 's');
-  $('#ag-enviar').textContent = AB.sel.size ? 'Registrar envio à AGEMAN (' + AB.sel.size + ')' : 'Registrar envio à AGEMAN';
-  $('#ag-todos').checked = f.length > 0 && AB.sel.size === f.length;
-}
-async function abrirCarta() {
-  if (!AB.sel.size) { toast('Selecione os projetos que vão na carta', true); return; }
-  if (!$('#ct-num').value) { const { data } = await sb.from('envios').select('numero_carta').not('numero_carta', 'is', null).order('id', { ascending: false }).limit(1);
-    const u = data && data[0] && /^(\d+)\/(\d{4})$/.exec(data[0].numero_carta), ano = new Date().getFullYear();
-    $('#ct-num').value = u && +u[2] === ano ? String(+u[1] + 1).padStart(4, '0') + '/' + ano : ''; }
-  if (!$('#ct-data').value) $('#ct-data').value = hojeISO();
-  abreModal('#modal-carta'); cartaPrevia();
-}
-async function cartaPrevia() {
-  const sel = filaDe(5).filter(d => AB.sel.has(d.id));
-  const r = await tarefa(() => gerarCarta(sel)); if (!r) return; AB.carta = r.bytes;
-  $('#ct-info').textContent = `${sel.length} projeto${sel.length === 1 ? '' : 's'} · ${r.tot} pontos · ${r.paginas} página${r.paginas > 1 ? 's' : ''}` + ($('#ct-link').value.trim() ? '' : ' · falta o link');
-  AB.vc.abrir(r.bytes, 'carta.pdf');
-}
-async function registrarEnvio() {
-  const ids = [...AB.sel]; if (!ids.length) { toast('Selecione pelo menos um processo', true); return; }
-  const data = $('#ag-data').value; if (!data) { toast('Informe a data do envio', true); return; }
-  const comp = $('#ag-up')._arqs[0], carta = AB.cartaPronta;
-  const r = await tarefa(async () => {
-    const pasta = 'envios/' + data.slice(0, 4);
-    const c = carta ? await enviarArquivo(pasta, 'carta', new File([carta.bytes], 'carta.pdf', { type: 'application/pdf' })) : null;
-    const k = comp ? await enviarArquivo(pasta, 'comprovante', comp) : null;
-    return rpc('registrar_envio', { p_ids: ids, p_carta: $('#ag-of').value.trim(), p_data: data, p_link: carta?.link || $('#ct-link').value.trim(), p_oficio: null, p_carta_caminho: c?.caminho || null, p_comprovante: k?.caminho || null });
-  });
-  if (!r) return;
-  toast(ids.length + ' processo' + (ids.length > 1 ? 's' : '') + ' enviado' + (ids.length > 1 ? 's' : '') + ' à AGEMAN em ' + dataBR(data));
-  AB.sel.clear(); AB.cartaPronta = null; $('#ag-up')._limpa(); $('#ag-of').value = ''; $('#ct-num').value = ''; $('#ct-link').value = '';
-  await recarregar(); asbAbrir();
-}
-
 // ================= devolver / cancelar (comuns) =================
 let DEV = null;
 function abrirDevolver(p, destinos) {

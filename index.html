@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap">
-<link rel="stylesheet" href="assets/estilo.css?v=8">
+<link rel="stylesheet" href="assets/estilo.css?v=9">
 <link rel="stylesheet" href="assets/natal.css?v=3">
 <script>try{var t=localStorage.getItem('provius-tema');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 </head>
@@ -61,7 +61,8 @@
         <button class="aba passo" role="tab" data-tela="projetos" data-setor="Projetos" title="2 · Elaborar projeto"><b>2</b>Projetos<span class="fila-n" data-etapas="1"></span></button><span class="seta" aria-hidden="true">›</span>
         <button class="aba passo" role="tab" data-tela="exe" data-setor="Engenharia" title="3 · Execução e correções"><b>3</b>Execução<span class="fila-n" data-etapas="2"></span></button><span class="seta" aria-hidden="true">›</span>
         <button class="aba passo" role="tab" data-tela="cad" data-setor="Cadastro" title="4 · Emplaquetamento"><b>4</b>Cadastro<span class="fila-n" data-etapas="3"></span></button><span class="seta" aria-hidden="true">›</span>
-        <button class="aba passo" role="tab" data-tela="asb" data-setor="Projetos" title="5 · As built e AGEMAN"><b>5</b>As built<span class="fila-n" data-etapas="4,5"></span></button>
+        <button class="aba passo" role="tab" data-tela="asb" data-setor="Projetos" title="5 · As built"><b>5</b>As built<span class="fila-n" data-etapas="4"></span></button><span class="seta" aria-hidden="true">›</span>
+        <button class="aba passo" role="tab" data-tela="ag" data-setor="Projetos" title="6 · Entrega para a AGEMAN"><b>6</b>AGEMAN<span class="fila-n" data-etapas="5"></span></button>
       </div>
       <span class="divisor" aria-hidden="true"></span>
       <button class="aba ico" role="tab" data-tela="hist" title="Histórico" aria-label="Histórico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></button>
@@ -194,6 +195,10 @@
           <div class="campo" id="j-aq-c" hidden><span class="r">Aquisição (veio do croqui)</span><div class="zona on" id="j-aq"></div></div>
           <div class="campo largo" id="j-obsped-c" hidden><span class="r">Observação da Engenharia</span><div class="zona on" id="j-obsped"></div></div>
         </div></section>
+      <section class="secao tc-sec" id="j-sec-tc" hidden><h2>Tabela de carga <span class="tc-h2sub">o sistema calcula os totais, a perda do reator e os materiais</span>
+          <span class="tc-bts"><button type="button" class="btn peq" id="j-tc-xl">⬇ Excel</button><button type="button" class="btn peq pri" id="j-tc-pdf">📄 PDF</button></span></h2>
+        <div class="tc-opc" id="j-tc-opc" hidden><span>Processo de antes do Provius ter a tabela de carga: ela é <b>opcional</b>. Sem ela, use as potências e modalidades abaixo.</span><button type="button" class="btn peq pri" id="j-tc-usar">Preencher tabela de carga</button></div>
+        <div id="j-tc"></div></section>
       <section class="secao" id="j-sec-pot"><h2>Potência aplicada</h2>
         <div class="tab-wrap" style="padding-top:10px"><table><thead><tr><th>Potência</th><th class="num">Quantidade</th><th></th></tr></thead><tbody id="j-pot"></tbody></table></div>
         <div class="total"><button type="button" class="btn peq" id="j-addpot">+ Adicionar potência</button><div style="display:flex;align-items:baseline;gap:8px"><span class="ajuda">Total de pontos</span><span class="numero" id="j-tot">0</span></div></div>
@@ -291,7 +296,7 @@
   <aside class="lado"><div class="caixa"><h3>Aguardando você</h3><div class="fila" id="k-fila"></div></div></aside>
 </main>
 
-<!-- ===== 5 · AS BUILT E AGEMAN ===== -->
+<!-- ===== 5 · AS BUILT ===== -->
 <main class="pagina" id="tela-asb" hidden>
   <div style="min-width:0">
     <div id="a-form" hidden>
@@ -309,6 +314,10 @@
           <div class="upload" id="a-up"><span class="pdf-ico">PDF</span><span class="nome">Projeto final com as correções e as plaquetas. Só PDF, até 10 MB.</span><label class="btn peq" for="a-arq">Escolher PDF</label><input type="file" id="a-arq" accept="application/pdf,.pdf" hidden></div></div>
         <div class="campo largo"><label class="r" for="a-obs">Observações</label><textarea id="a-obs"></textarea></div>
       </div></section>
+      <section class="secao tc-sec" id="a-sec-tc" hidden><h2>Tabela de carga do as built <span class="tc-h2sub">começa igual à do projeto · ajuste o que mudou no campo</span>
+          <span class="tc-bts"><button type="button" class="btn peq" id="a-tc-xl">⬇ Excel</button><button type="button" class="btn peq pri" id="a-tc-pdf">📄 PDF</button></span></h2>
+        <div class="tc-opc" id="a-tc-opc" hidden><span>Processo de antes do Provius ter a tabela de carga: ela é <b>opcional</b>. Sem ela, corrija os pontos abaixo.</span><button type="button" class="btn peq pri" id="a-tc-usar">Preencher tabela de carga</button></div>
+        <div id="a-tc"></div></section>
       <section class="secao" id="a-sec-pot"><h2>Pontos no as built</h2>
         <div class="total"><div class="zona on" id="a-pts" style="flex:1;min-width:220px"></div><button type="button" class="btn peq" id="a-pot-abre">✎ Corrigir potências e modalidades</button></div>
         <div id="a-pot-ed" hidden>
@@ -320,22 +329,42 @@
             <div class="campo"><label class="r" for="a-de">Iluminação de destaque</label><input type="number" min="0" id="a-de" class="a-mod"></div>
           </div><div class="conf" id="a-conf"></div>
         </div></section>
-      <div class="acoes"><button type="button" class="btn canc" id="a-canc">Cancelar processo</button><button type="button" class="btn dev" id="a-dev">↩ Devolver</button><button type="button" class="btn" id="a-salvar">Salvar</button><button type="button" class="btn pri" id="a-ok">Concluir as built → pronto p/ AGEMAN</button></div>
+      <div class="acoes"><button type="button" class="btn canc" id="a-canc">Cancelar processo</button><button type="button" class="btn dev" id="a-dev">↩ Devolver</button><button type="button" class="btn" id="a-salvar">Salvar</button><button type="button" class="btn pri" id="a-ok">Concluir as built → vai para a aba AGEMAN</button></div>
     </div>
-    <div id="a-vazio" hidden><div class="cab"><div><div class="etapa">Setor de Projetos · As built</div><h1>Nenhum as built pendente</h1><p class="sub">Tudo o que voltou do Cadastro já foi atualizado.</p></div></div></div>
-    <section class="secao" style="margin-top:22px">
-      <h2>Prontos para enviar à AGEMAN <span class="contador" id="ag-cont" style="text-transform:none;letter-spacing:0"></span></h2>
-      <div class="ag-tab"><table><thead><tr><th><input type="checkbox" id="ag-todos" aria-label="Selecionar todos"></th><th>Nº</th><th>Logradouro</th><th>Bairro</th><th class="num">Pontos</th><th>As built</th></tr></thead><tbody id="ag-lista"></tbody></table></div>
-      <div class="ag-envio">
-        <div class="campo"><label class="r" for="ag-data">Data do envio <em>*</em></label><input type="date" id="ag-data"></div>
-        <div class="campo"><label class="r" for="ag-of">Nº da carta / ofício</label><input type="text" id="ag-of"></div>
-        <div class="campo largo"><span class="r">Comprovante de envio (opcional)</span>
-          <div class="upload" id="ag-up"><span class="pdf-ico">PDF</span><span class="nome">Ofício protocolado ou email de envio em PDF.</span><label class="btn peq" for="ag-arq">Escolher PDF</label><input type="file" id="ag-arq" accept="application/pdf,.pdf" hidden></div></div>
-        <div class="acoes" style="grid-column:1/-1"><button type="button" class="btn" id="ag-carta">📄 Gerar carta de envio</button><button type="button" class="btn pri" id="ag-enviar">Registrar envio à AGEMAN</button></div>
-      </div>
-    </section>
+    <div id="a-vazio" hidden><div class="cab"><div><div class="etapa">Setor de Projetos · As built</div><h1>Nenhum as built pendente</h1><p class="sub">Tudo o que voltou do Cadastro já foi atualizado. Os prontos ficam na aba <b>6 · AGEMAN</b>.</p></div></div></div>
   </div>
   <aside class="lado"><div class="caixa"><h3>Atualizar as built</h3><div class="fila" id="a-fila"></div></div></aside>
+</main>
+
+<!-- ===== 6 · AGEMAN ===== -->
+<main class="pagina sem-lado" id="tela-ag" hidden>
+  <div style="min-width:0">
+    <div class="cab"><div><div class="etapa">Setor de Projetos · Etapa 6 · Envio à AGEMAN</div><h1>Entrega para a AGEMAN</h1><p class="sub">Monte o lote com os processos prontos, gere a carta e registre o envio. Os envios já feitos ficam em "Envios anteriores".</p></div>
+      <span class="vis" role="group" aria-label="Parte da tela" id="ag-modo"><button type="button" data-m="lote" aria-pressed="true">Novo lote</button><button type="button" data-m="ant" aria-pressed="false">Envios anteriores</button></span></div>
+    <div id="ag-lote">
+      <div class="sd-kpis" id="ag-kpis"></div>
+      <section class="secao">
+        <h2>Prontos para enviar <span class="contador" id="ag-cont" style="text-transform:none;letter-spacing:0"></span></h2>
+        <div class="ag-tab"><table><thead><tr><th><input type="checkbox" id="ag-todos" aria-label="Selecionar todos"></th><th>Nº</th><th>Logradouro</th><th>Bairro</th><th>Serviço</th><th class="num">Pontos</th><th>Pronto há</th><th>Arquivos</th></tr></thead><tbody id="ag-lista"></tbody></table></div>
+      </section>
+      <section class="secao"><h2>Dados do envio</h2>
+        <div class="grade">
+          <div class="campo"><label class="r" for="ag-data">Data do envio <em>*</em></label><input type="date" id="ag-data"></div>
+          <div class="campo"><label class="r" for="ag-of">Nº da carta / ofício</label><input type="text" id="ag-of"><span class="ajuda" id="ag-of-dica"></span></div>
+          <div class="campo largo"><span class="r">Comprovante de envio (opcional)</span>
+            <div class="upload" id="ag-up"><span class="pdf-ico">PDF</span><span class="nome">Ofício protocolado ou email de envio em PDF.</span><label class="btn peq" for="ag-arq">Escolher PDF</label><input type="file" id="ag-arq" accept="application/pdf,.pdf" hidden></div></div>
+        </div>
+        <div class="acoes" style="padding:0 16px 16px"><button type="button" class="btn" id="ag-carta">📄 Gerar carta de envio</button><button type="button" class="btn pri" id="ag-enviar">Registrar envio à AGEMAN</button></div>
+      </section>
+    </div>
+    <div id="ag-ant" hidden>
+      <div class="sd-kpis" id="an-kpis"></div>
+      <section class="secao">
+        <div class="hi-filtros"><label>Ano <select id="an-ano"></select></label><input type="search" id="an-busca" placeholder="Nº da carta, nº do processo ou logradouro" aria-label="Buscar envio"></div>
+        <div id="an-lista"></div>
+      </section>
+    </div>
+  </div>
 </main>
 
 <!-- ===== USUÁRIOS ===== -->
@@ -464,13 +493,15 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="assets/config.js?v=2"></script>
-<script src="assets/comum.js?v=2"></script>
+<script src="assets/comum.js?v=3"></script>
 <script src="assets/documentos.js?v=2"></script>
 <script src="assets/itens.js?v=5"></script>
-<script src="assets/telas.js?v=6"></script>
+<script src="assets/carga.js?v=1"></script>
+<script src="assets/telas.js?v=7"></script>
 <script src="assets/banco.js?v=2"></script>
 <script src="assets/historico.js?v=1"></script>
-<script src="assets/app.js?v=8"></script>
+<script src="assets/ageman.js?v=1"></script>
+<script src="assets/app.js?v=9"></script>
 <script src="assets/natal.js?v=5"></script>
 </body>
 </html>
