@@ -1,0 +1,77 @@
+/* PROVIUS · tema de Natal (liga sozinho até 25/12; ver natal.js) */
+:root.natal{--natal-verm:#c8242f;--natal-verde:#1f7a3f;--natal-ouro:#e8b931}
+
+/* fundo levemente aquecido (vermelho no alto, verde embaixo) */
+.natal #fundo::after{content:"";position:absolute;inset:0;background:radial-gradient(120% 60% at 50% -10%,rgba(200,36,47,.10),transparent 60%),radial-gradient(120% 50% at 50% 115%,rgba(31,122,63,.12),transparent 60%)}
+
+/* neve: atrás do conteúdo, por cima da foto de fundo */
+#natal-neve{position:fixed;inset:0;z-index:-1;pointer-events:none;width:100%;height:100%}
+
+/* neve acumulada e árvores no rodapé (atrás do conteúdo) */
+#natal-chao{position:fixed;left:0;right:0;bottom:0;height:150px;z-index:-1;pointer-events:none}
+#natal-chao svg{position:absolute;bottom:0}
+#natal-chao .monte{left:0;width:100%;height:60px}
+#natal-chao .arv{bottom:22px}
+#natal-chao .arv.e1{left:1.5%;height:130px}
+#natal-chao .arv.e2{left:calc(1.5% + 70px);height:90px}
+#natal-chao .arv.d1{right:2%;height:140px}
+#natal-chao .arv.d2{right:calc(2% + 78px);height:96px}
+#natal-chao .presente{bottom:10px}
+#natal-chao .presente.p1{right:calc(2% + 52px);height:34px}
+#natal-chao .presente.p2{left:calc(1.5% + 52px);height:30px}
+@media (max-width:700px){#natal-chao{height:100px}#natal-chao .arv.e1,#natal-chao .arv.d1{height:86px}#natal-chao .arv.e2,#natal-chao .arv.d2,#natal-chao .presente{display:none}}
+:root[data-theme="dark"] #natal-chao .monte path{fill:#dfe9f5}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) #natal-chao .monte path{fill:#dfe9f5}}
+
+/* guirlanda de pinheiro com pisca-pisca na borda do cabeçalho */
+#natal-luzes{position:absolute;left:0;right:0;bottom:-15px;height:24px;pointer-events:none;overflow:visible;z-index:1}
+#natal-luzes svg{display:block;width:100%;height:24px;overflow:visible}
+#natal-luzes .lamp{animation:natal-pisca 2.4s ease-in-out infinite}
+#natal-luzes .lamp.b{animation-delay:.8s}
+#natal-luzes .lamp.c{animation-delay:1.6s}
+@keyframes natal-pisca{0%,100%{opacity:1;filter:drop-shadow(0 0 4px currentColor)}50%{opacity:.4;filter:none}}
+
+/* bolas penduradas nas laterais (só em telas largas) */
+#natal-bolas{position:fixed;top:0;left:0;right:0;height:0;z-index:4;pointer-events:none}
+#natal-bolas .bola{position:absolute;top:0;transform-origin:50% 0;animation:natal-balanca 4s ease-in-out infinite}
+#natal-bolas .bola:nth-child(2n){animation-delay:-1.3s;animation-duration:5s}
+#natal-bolas .bola:nth-child(3n){animation-delay:-2.6s}
+@keyframes natal-balanca{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(5deg)}}
+@media (max-width:1399px){#natal-bolas{display:none}}
+
+/* gorro de Papai Noel no logo e no avatar */
+.natal .marca,.natal .acesso-cx{position:relative}
+.natal-gorro{position:absolute;pointer-events:none;transform:rotate(-12deg);transform-origin:40% 80%;z-index:2}
+.natal .topo-in{padding-top:16px;padding-bottom:16px}
+.marca .natal-gorro{width:31px;left:-1px;top:-17px}
+.acesso-cx .natal-gorro{width:46px;left:calc(50% - 140px);top:8px}
+.natal .avatar{position:relative;overflow:visible}
+.natal .avatar::before{content:"";position:absolute;width:31px;height:27px;left:2px;top:-15px;transform:rotate(-12deg);transform-origin:40% 80%;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 56'%3E%3Cpath d='M8 44 C14 22 30 6 50 8 C58 9 60 18 56 30 C54 22 48 18 42 20 C38 28 40 38 44 44 Z' fill='%23c8242f'/%3E%3Crect x='2' y='40' width='48' height='13' rx='6.5' fill='%23fff' stroke='%23e3e3e3'/%3E%3Ccircle cx='56' cy='32' r='7' fill='%23fff' stroke='%23e3e3e3'/%3E%3C/svg%3E") center/contain no-repeat;pointer-events:none}
+
+/* azevinho no canto dos cartões das etapas */
+.natal .est::after{content:"";position:absolute;top:-8px;right:-6px;width:34px;height:26px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 26'%3E%3Cpath d='M17 13 C12 4 4 3 1 7 C4 8 4 11 2 13 C6 13 7 16 6 19 C10 16 15 17 17 13Z' fill='%231f7a3f'/%3E%3Cpath d='M17 13 C22 4 30 3 33 7 C30 8 30 11 32 13 C28 13 27 16 28 19 C24 16 19 17 17 13Z' fill='%232a8f4c'/%3E%3Ccircle cx='14' cy='14' r='3.6' fill='%23d62a36'/%3E%3Ccircle cx='20' cy='14' r='3.6' fill='%23c8242f'/%3E%3Ccircle cx='17' cy='18.5' r='3.6' fill='%23e03440'/%3E%3C/svg%3E") center/contain no-repeat;pointer-events:none}
+
+/* mensagem e contagem na tela de entrada */
+.natal-msg{align-self:center;text-align:center;font:700 15px var(--f-corpo);color:var(--natal-verm);margin:-4px 0 2px}
+.natal-msg small{display:block;font-weight:500;font-size:12.5px;color:var(--suave);margin-top:2px}
+:root[data-theme="dark"] .natal-msg{color:#ff7a82}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .natal-msg{color:#ff7a82}}
+
+/* caixa de entrada embrulhada para presente */
+.natal .acesso-cx{background-image:repeating-linear-gradient(-45deg,var(--natal-verm) 0 10px,#fff 10px 20px,var(--natal-verde) 20px 30px,#fff 30px 40px);background-size:100% 7px;background-repeat:no-repeat;background-color:var(--sup);padding-top:34px;overflow:visible;border-color:rgba(200,36,47,.35)}
+.natal-laco{position:absolute;top:-22px;left:50%;width:58px;margin-left:-29px;pointer-events:none}
+
+/* botão principal da entrada em vermelho natalino */
+.natal .acesso-cx .btn.pri{background:var(--natal-verm);border-color:var(--natal-verm);color:#fff}
+
+/* contagem regressiva no menu do usuário */
+.natal-conta{margin:2px 4px 4px;padding:6px 10px;border-radius:6px;font:600 13px var(--f-corpo);color:var(--natal-verm);background:rgba(200,36,47,.08)}
+:root[data-theme="dark"] .natal-conta{color:#ff8a92;background:rgba(255,122,130,.1)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .natal-conta{color:#ff8a92;background:rgba(255,122,130,.1)}}
+
+/* botão de ligar/desligar no menu do usuário */
+.menu-caixa .item#natal-tog{display:flex;justify-content:space-between;align-items:center;gap:14px;white-space:nowrap}
+#menu-eu .menu-caixa:has(#natal-tog){min-width:250px}
+.menu-caixa .item#natal-tog span{color:var(--suave);font-size:12.5px}
+
+@media (prefers-reduced-motion:reduce){#natal-luzes .lamp,#natal-bolas .bola{animation:none}}
