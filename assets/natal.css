@@ -75,4 +75,14 @@
 #menu-eu .menu-caixa:has(#natal-tog){min-width:250px}
 .menu-caixa .item#natal-tog span{color:var(--suave);font-size:12.5px}
 
+/* Papai Noel: acenando na entrada, escondido no "Aguardando você", sentado no 1º cartão das etapas */
+.natal-noel{position:absolute;pointer-events:none;z-index:3;filter:drop-shadow(0 3px 4px rgba(0,0,0,.25))}
+.natal-noel svg{display:block;width:100%;height:100%;overflow:visible}
+.natal .lado>.caixa{position:relative}
+.natal .lado>.caixa:has(>.natal-noel){margin-top:62px}
+.natal-noel-esteira{position:relative;height:0;margin-top:72px;z-index:2;--col:calc((100% - 40px) / 6)}
+@media (max-width:900px){.natal-noel-esteira{--col:calc((100% - 16px) / 3)}}
+@media (max-width:520px){.natal-noel-esteira{--col:calc((100% - 8px) / 2)}}
+.natal .acesso-cx .natal-noel{z-index:3}
+
 @media (prefers-reduced-motion:reduce){#natal-luzes .lamp,#natal-bolas .bola{animation:none}}

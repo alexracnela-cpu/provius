@@ -96,6 +96,118 @@
     medir(); addEventListener('resize', medir); quadro();
   }
 
+  // ---------- Papai Noel (desenho em SVG; cabeça centrada em 0,0) ----------
+  const PELE = '#fbd3b6', VERM = '#d42a35', BORDA_B = '#d9e1ea', LUVA = '#1f7a3f', LUVA2 = '#16602f';
+  // gradientes de cada boneco (id próprio para não colidir)
+  const defs = (i) => `<defs>
+    <radialGradient id="pele${i}" cx="45%" cy="35%" r="70%"><stop offset="0" stop-color="#ffe3cf"/><stop offset="1" stop-color="#f1b38f"/></radialGradient>
+    <radialGradient id="verm${i}" cx="40%" cy="30%" r="80%"><stop offset="0" stop-color="#ec3d48"/><stop offset="1" stop-color="#a8161f"/></radialGradient>
+    <radialGradient id="nariz${i}" cx="38%" cy="32%" r="70%"><stop offset="0" stop-color="#ffb3a6"/><stop offset="1" stop-color="#e2786b"/></radialGradient>
+    <radialGradient id="luva${i}" cx="38%" cy="30%" r="75%"><stop offset="0" stop-color="#2f9a55"/><stop offset="1" stop-color="#155c2c"/></radialGradient>
+    <linearGradient id="branco${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e8eef4"/></linearGradient>
+  </defs>`;
+  // pelo fofo: círculos em volta de um caminho, com contorno suave
+  function fofo(pts, r, i, base = '') {
+    const c = (d, f) => pts.map(([x, y]) => `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r + d}" fill="${f}"/>`).join('');
+    return `<g>${c(1, BORDA_B)}${base ? base.replace('FILL', BORDA_B).replace('/>', ' stroke="' + BORDA_B + '" stroke-width="2"/>') : ''}${c(0, `url(#branco${i})`)}${base ? base.replace('FILL', `url(#branco${i})`) : ''}</g>`;
+  }
+  const linha = (x0, y0, x1, y1, q, n) => Array.from({ length: n }, (_, k) => { const t = k / (n - 1); return [x0 + (x1 - x0) * t, y0 + (y1 - y0) * t - q * 4 * t * (1 - t)]; });
+  const arco = (cx, cy, rx, ry, a0, a1, n) => Array.from({ length: n }, (_, k) => { const a = a0 + (a1 - a0) * k / (n - 1); return [cx + rx * Math.cos(a), cy + ry * Math.sin(a)]; });
+
+  function cabeca(i) {
+    const barbaPts = arco(0, 2, 17.5, 30, 0.05, Math.PI - 0.05, 11);
+    const barbaBase = `<path d="M-17.5 2 A17.5 30 0 0 0 17.5 2 C14 10 8 13 0 13 C-8 13 -14 10 -17.5 2Z" fill="FILL"/>`;
+    return `
+    <ellipse cx="-16.5" cy="0" rx="3.4" ry="4.6" fill="url(#pele${i})"/><ellipse cx="16.5" cy="0" rx="3.4" ry="4.6" fill="url(#pele${i})"/>
+    <circle cx="0" cy="-1" r="17" fill="url(#pele${i})"/>
+    <ellipse cx="-9.5" cy="5" rx="4.2" ry="3" fill="#ff8f8f" opacity=".55"/><ellipse cx="9.5" cy="5" rx="4.2" ry="3" fill="#ff8f8f" opacity=".55"/>
+    <g transform="translate(0 -1.5)"><g>
+      <animateTransform attributeName="transform" type="scale" values="1 1;1 1;1 .12;1 1" keyTimes="0;.9;.95;1" dur="4.5s" repeatCount="indefinite"/>
+      <ellipse cx="-6" cy="0" rx="2.3" ry="3" fill="#2a1a14"/><ellipse cx="6" cy="0" rx="2.3" ry="3" fill="#2a1a14"/>
+      <circle cx="-5.2" cy="-1.1" r="1" fill="#fff"/><circle cx="6.8" cy="-1.1" r="1" fill="#fff"/></g></g>
+    ${fofo(linha(-10.5, -6.5, -2.5, -7, 1.6, 4), 1.7, i)}${fofo(linha(2.5, -7, 10.5, -6.5, 1.6, 4), 1.7, i)}
+    ${fofo(barbaPts, 5, i, barbaBase)}
+    <path d="M-4.5 13.5 Q0 20 4.5 13.5Z" fill="#8a2626"/><ellipse cx="0" cy="16.3" rx="2.2" ry="1.3" fill="#e46a6a"/>
+    <g stroke="${BORDA_B}" stroke-width="1" fill="url(#branco${i})">
+      <path d="M0 9.5 C-2 5.5 -8 5 -12 7 C-15.5 8.5 -16.5 12.5 -13.5 13 C-12 11 -9 11.5 -6.5 12.2 C-3.5 13 -1 12 0 10.5Z"/>
+      <path d="M0 9.5 C2 5.5 8 5 12 7 C15.5 8.5 16.5 12.5 13.5 13 C12 11 9 11.5 6.5 12.2 C3.5 13 1 12 0 10.5Z"/></g>
+    <circle cx="0" cy="5" r="3.9" fill="url(#nariz${i})"/><circle cx="-1.2" cy="3.7" r="1.1" fill="#fff" opacity=".7"/>
+    <path d="M-17 -14 C-16 -31 -2 -42 14 -41 C25 -40 33 -32 33 -19 C30 -26 25 -30 19 -29 C19 -23 18 -18 17 -14Z" fill="url(#verm${i})"/>
+    <path d="M19 -29 C25 -30 30 -26 33 -19" fill="none" stroke="#8e141c" stroke-width="1.4" opacity=".6"/>
+    <path d="M-8 -30 C-3 -36 4 -38 10 -37" fill="none" stroke="#ff7b84" stroke-width="2" stroke-linecap="round" opacity=".5"/>
+    ${fofo(linha(-19, -15.5, 19, -15.5, 1.5, 9), 4.4, i)}
+    ${fofo(arco(33, -17, 3.6, 3.6, 0, Math.PI * 2, 7), 2.6, i, `<circle cx="33" cy="-17" r="4" fill="FILL"/>`)}`;
+  }
+  // luva com polegar; e = 1 (direita) ou -1 (esquerda)
+  const luva = (x, y, r, e, i) => `<g transform="translate(${x} ${y}) rotate(${r}) scale(${e} 1)">
+    <ellipse cx="-5.6" cy="-1.5" rx="2.8" ry="3.8" fill="url(#luva${i})" transform="rotate(-35 -5.6 -1.5)"/>
+    <ellipse rx="6.8" ry="5.8" fill="url(#luva${i})"/>
+    <path d="M-1.5 -4.2 V2.5 M2.2 -4 V2.5" stroke="${LUVA2}" stroke-width="1" stroke-linecap="round" opacity=".7"/></g>`;
+  const manga = (d, i) => `<path d="${d}" stroke="url(#verm${i})" stroke-width="11" stroke-linecap="round" fill="none"/>`;
+  const punho = (x, y, r, i) => fofo(linha(-5.5, 0, 5.5, 0, 0, 4).map(([a, b]) => { const c = Math.cos(r * Math.PI / 180), s = Math.sin(r * Math.PI / 180); return [x + a * c - b * s, y + a * s + b * c]; }), 3.2, i);
+  const tronco = (y0, y1, i) => `<path d="M-26 ${y1} C-28 ${y0 + 12} -18 ${y0} 0 ${y0} C18 ${y0} 28 ${y0 + 12} 26 ${y1}Z" fill="url(#verm${i})"/>
+    <rect x="-3.6" y="${y0}" width="7.2" height="${y1 - y0}" fill="url(#branco${i})"/>`;
+
+  // ---------- pose A: acenando (borda do cartão em y = 58); duas mãos: uma acena, outra segura a borda ----------
+  const ACENA = { vb: [-36, -48, 82, 114], borda: 58, svg: (i) => defs(i) + `
+    ${tronco(29, 58, i)}
+    <g><animateTransform attributeName="transform" type="rotate" values="-12 21 38;14 21 38;-12 21 38" dur="1.1s" repeatCount="indefinite"/>
+      ${manga('M21 38 Q35 30 35 12', i)}${punho(35, 9, 0, i)}${luva(35, 1, -8, 1, i)}</g>
+    ${cabeca(i)}
+    ${manga('M-21 39 Q-28 47 -21 54', i)}${punho(-20, 54, 25, i)}${luva(-17, 59, 15, -1, i)}` };
+
+  // ---------- pose B: escondido, espiando (borda em y = 6) ----------
+  const ESPIA = { vb: [-30, -50, 72, 66], borda: 6, svg: (i) => defs(i) + `
+    <defs><clipPath id="c${i}"><rect x="-60" y="-80" width="140" height="86"/></clipPath></defs>
+    <g clip-path="url(#c${i})"><g>
+      <animateTransform attributeName="transform" type="translate" values="0 52;0 52;0 0;0 0;0 52;0 52" keyTimes="0;.15;.25;.7;.8;1" dur="6s" repeatCount="indefinite"/>
+      <g><animateTransform attributeName="transform" type="rotate" values="0;-7;0;7;0" keyTimes="0;.35;.5;.65;1" dur="6s" repeatCount="indefinite"/>${cabeca(i)}</g>
+    </g></g>
+    ${luva(-19, 7, 0, -1, i)}${luva(19, 7, 0, 1, i)}` };
+
+  // ---------- pose C: sentado na borda (borda em y = 50) ----------
+  const perna = (x, atraso, e, i) => `<g transform="translate(${x} 50)"><g>
+    <animateTransform attributeName="transform" type="rotate" values="-10;12;-10" dur="1.8s" begin="${atraso}s" repeatCount="indefinite"/>
+    <rect x="-5.5" y="-2" width="11" height="15" rx="4" fill="url(#verm${i})"/>
+    ${fofo(linha(-5, 13, 5, 13, 0, 4), 2.8, i)}
+    <path transform="scale(${e} 1)" d="M-6 15.5 H6 V22 C6 24.5 10 24.5 11.5 27 C12 30.5 -6 30.5 -6 27.5Z" fill="#232323"/>
+    <path transform="scale(${e} 1)" d="M-4 18 V26" stroke="#4a4a4a" stroke-width="1.4" stroke-linecap="round"/>
+  </g></g>`;
+  const SENTA = { vb: [-38, -56, 78, 138], borda: 50, svg: (i) => defs(i) + `
+    ${perna(-9, 0, -1, i)}${perna(9, -0.9, 1, i)}
+    <path d="M-25 52 C-28 31 -17 22 0 22 C17 22 28 31 25 52Z" fill="url(#verm${i})"/>
+    <rect x="-3.6" y="22" width="7.2" height="18" fill="url(#branco${i})"/>
+    <rect x="-25.5" y="40" width="51" height="6.5" fill="#222"/>
+    <rect x="-5.5" y="38.8" width="11" height="9" rx="1.6" fill="none" stroke="#f2c230" stroke-width="2.2"/>
+    ${fofo(linha(-25, 51, 25, 51, 0, 10), 3, i)}
+    <g transform="translate(0 -6)">${cabeca(i)}</g>
+    ${manga('M-20 29 Q-29 38 -21 45', i)}${manga('M20 29 Q29 38 21 45', i)}
+    ${punho(-19, 45, -35, i)}${punho(19, 45, 35, i)}
+    ${luva(-14, 50, -10, -1, i)}${luva(14, 50, 10, 1, i)}` };
+
+  // monta o Papai Noel: alto em px; a "borda" do desenho fica alinhada ao topo do elemento onde ele está
+  let nNoel = 0;
+  function noel(p, alto, pos) {
+    const [, y, w, h] = p.vb, esc = alto / h, larg = w * esc, abaixo = (y + h - p.borda) * esc, i = 'n' + (++nNoel);
+    const el = mk('div', 'natal-noel'); el.setAttribute('aria-hidden', 'true');
+    el.style.cssText = `width:${larg}px;height:${alto}px;bottom:calc(100% - ${abaixo}px);${pos(larg)}`;
+    el.innerHTML = `<svg viewBox="${p.vb.join(' ')}">${p.svg(i)}</svg>`;
+    if (parado) setTimeout(() => { const s = el.querySelector('svg'); s && s.pauseAnimations && s.pauseAnimations(); });
+    return el;
+  }
+  function papaiNoel() {
+    // acenando: caixa de entrada (e a de trocar senha)
+    document.querySelectorAll('#f-login, #f-senha').forEach(c => { if (!c.querySelector(':scope > .natal-noel')) c.append(noel(ACENA, 124, () => 'right:22px')); });
+    // escondido: painel "Aguardando você"
+    document.querySelectorAll('.lado > .caixa').forEach(c => { if (c.querySelector('.fila') && !c.querySelector(':scope > .natal-noel')) c.append(noel(ESPIA, 64, () => 'right:30px')); });
+    // sentado: em cima do primeiro cartão das etapas (tela Todos)
+    const est = document.getElementById('esteira');
+    if (est && !document.querySelector('.natal-noel-esteira')) {
+      const w = mk('div', 'natal-noel-esteira'); w.setAttribute('aria-hidden', 'true');
+      w.append(noel(SENTA, 112, l => `left:calc(var(--col) * .74 - ${l / 2}px)`)); est.before(w);
+    }
+  }
+
   // ---------- gorros, laço, mensagem e contagem ----------
   function enfeites() {
     document.querySelectorAll('.marca, .acesso-cx').forEach(c => { if (!c.querySelector(':scope > .natal-gorro')) c.prepend(mk('span', 'natal-gorro', GORRO)); });
@@ -109,10 +221,10 @@
   }
 
   // ---------- ligar / desligar ----------
-  function ligar() { raiz.classList.add('natal'); enfeites(); luzes(); bolas(); chao(); neve(); }
+  function ligar() { raiz.classList.add('natal'); enfeites(); papaiNoel(); luzes(); bolas(); chao(); neve(); }
   function desligar() {
     raiz.classList.remove('natal'); cancelAnimationFrame(raf); cv = null;
-    ['#natal-luzes', '#natal-neve', '#natal-bolas', '#natal-chao', '.natal-gorro', '.natal-laco', '.natal-msg', '.natal-conta'].forEach(s => document.querySelectorAll(s).forEach(e => e.remove()));
+    ['#natal-luzes', '#natal-neve', '#natal-bolas', '#natal-chao', '.natal-gorro', '.natal-laco', '.natal-msg', '.natal-conta', '.natal-noel', '.natal-noel-esteira'].forEach(s => document.querySelectorAll(s).forEach(e => e.remove()));
   }
   function botao() {
     const ref = document.getElementById('trocar-senha'); if (!ref) return;
