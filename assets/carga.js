@@ -261,7 +261,7 @@ async function gerarTabelaCarga(p, t, o = {}) {
     const det = (a, b) => [temMod ? a : '', temExp ? b : ''].filter(Boolean).join(' · ');
     const ks = [
       ['Pontos instalados', n(T.qM + T.qE), det(`${T.qM} modernização`, `${T.qE} cresc. vegetativo`), B && B.qM + B.qE !== T.qM + T.qE ? 'projeto: ' + n(B.qM + B.qE) : ''],
-      ['Potência retirada', n(T.pR) + ' W', `${T.qR} luminárias · com perda do reator`, B && B.pR !== T.pR ? 'projeto: ' + n(B.pR) + ' W' : ''],
+      ['Potência total retirada', n(T.pR) + ' W', `${T.qR} luminárias · com perda do reator`, B && B.pR !== T.pR ? 'projeto: ' + n(B.pR) + ' W' : ''],
       ['Potência total instalada', n(T.pM + T.pE) + ' W', det(`${n(T.pM)} W modernização`, `${n(T.pE)} W cresc. vegetativo`), B && B.pM + B.pE !== T.pM + T.pE ? 'projeto: ' + n(B.pM + B.pE) + ' W' : ''],
       ['Redução na modernização', T.qR ? n(T.red) + ' W' : '—', T.qR ? (T.pct * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '% menos que o retirado' : 'sem retirada', '']].filter(k => temMod || !/retirada|Redução/.test(k[0]));   // sem modernização, só pontos e potência instalada
     const g = 10, w = (LW - (ks.length - 1) * g) / ks.length, h = 50;
