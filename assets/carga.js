@@ -446,7 +446,10 @@ function geraXlsxCarga(p, t, asbuilt) {
 }
 
 // ---------- abrir o PDF / baixar o Excel ----------
-const tcArq = (p, asbuilt, ext) => 'tabela-carga-' + p.numero.replace(/\W+/g, '-') + (asbuilt ? '-asbuilt' : '') + '.' + ext;
+// nome de arquivo: nº do processo - logradouro - bairro (sem caracteres que o Windows não aceita)
+const nomeProcesso = p => [p.numero.replace(/\//g, '-'), p.logradouro, p.bairro].filter(Boolean).map(s => String(s).trim()).join(' - ')
+  .replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 150).trim();
+const tcArq = (p, asbuilt, ext) => nomeProcesso(p) + ' - TABELA DE CARGA' + (asbuilt ? ' AS BUILT' : '') + '.' + ext;
 async function tcPdfAbrir(p, t, asbuilt, base) {
   const r = await tarefa(() => gerarTabelaCarga(p, t, { asbuilt, base, por: EU?.nome })); if (!r) return;
   abrirBlob(new Blob([r.bytes], { type: 'application/pdf' }));

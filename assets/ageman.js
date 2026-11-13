@@ -94,7 +94,7 @@ async function registrarEnvio() {
 }
 
 // ---------- PDF unido: as built enviado + tabela de carga (uma página atrás da outra) ----------
-const agNomeArq = p => p.numero.replace(/\//g, '-') + '.pdf';
+const agNomeArq = p => nomeProcesso(p) + '.pdf';   // ex.: C-0023-2026 - AV. TARUMÃ COM R. SILVA RAMOS - CENTRO.pdf
 async function agUnido(id) {
   const p = await carregarProcesso(id), faltou = [];
   const out = await PDFLib.PDFDocument.create(); out.setTitle('As built e tabela de carga ' + p.numero); out.setProducer('Provius');
