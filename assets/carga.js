@@ -473,16 +473,13 @@ function tcIniciar() {
   $('#a-tc-xl').onclick = () => TCED.a && tcXlsxBaixar(AB.p, tcParaGravar(TCED.a.t), true);
   $('#j-serv').addEventListener('change', () => tcAtualiza('j'));
 }
-// decide se a tela usa a tabela (processo novo, ou que já tem tabela) ou mostra a opção (processo antigo)
+// a tela usa sempre a tabela (menos R-, que usa os itens de reequilíbrio)
 function tcTela(pre, p) {
-  const sec = $('#' + pre + '-sec-tc'), pot = pre === 'j' ? ['#j-sec-pot', '#j-sec-mod'] : ['#a-sec-pot'];
+  const sec = $('#' + pre + '-sec-tc');
   tcFechar(pre); $('#' + pre + '-tc-opc').hidden = true;
   if (SEM_TC || !p || p.tipo === 'R' || !('tabela_carga' in p)) { if (p && !('tabela_carga' in p)) SEM_TC = true; sec.hidden = true; return; }   // R- usa os itens de reequilíbrio
   sec.hidden = false; $('#' + pre + '-tc-pdf').hidden = $('#' + pre + '-tc-xl').hidden = false;
-  const tem = pre === 'j' ? tcTemLinhas(p.tabela_carga) : tcTemLinhas(p.tabela_carga_asb) || tcTemLinhas(p.tabela_carga);
-  if (tem || tcExige(p)) { tcUsar(pre); return; }
-  $('#' + pre + '-tc-opc').hidden = false; $('#' + pre + '-tc-pdf').hidden = $('#' + pre + '-tc-xl').hidden = true;
-  pot.forEach(s => { if (!(pre === 'j' && p.tipo === 'R')) $(s).hidden = false; });
+  tcUsar(pre);   // 13/11/2026: todo processo (novo ou antigo) usa só a tabela; o editor antigo de potências e modalidades saiu
 }
 function tcUsar(pre) {
   const p = pre === 'j' ? PJ.p : AB.p; if (!p) return;
@@ -500,6 +497,7 @@ function tcUsar(pre) {
 function tcPreparar(pre, entregar, servico) {
   const E = TCED[pre]; if (!E) return {};
   const t = tcParaGravar(E.t), faltas = tcFaltas(t);
+  if (!entregar && !tcTemLinhas(t)) return {};   // só salvando, com a tabela vazia: não mexe nas potências já gravadas (processos antigos)
   if (entregar && faltas.length) {
     tcAviso(pre, '<b>Falta na tabela de carga:</b> ' + faltas.slice(0, 4).map(esc).join(' · ') + (faltas.length > 4 ? ' …' : ''));
     $('#' + pre + '-sec-tc').scrollIntoView({ behavior: 'smooth', block: 'start' });
