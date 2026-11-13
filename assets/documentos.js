@@ -196,6 +196,77 @@ async function gerarCarta(sel) {
   return { bytes: await pdf.save(), tot, paginas: pdf.getPageCount() };
 }
 
+// logo com transparência aplicada nos pixels: [55% para o cabeçalho, 7% para a marca d'água]
+async function cartaLogoFosco(png) {
+  try {
+    const bmp = await createImageBitmap(new Blob([png], { type: 'image/png' }));
+    return await Promise.all([.55, .07].map(async a => {
+      const cv = document.createElement('canvas'); cv.width = bmp.width; cv.height = bmp.height;
+      const cx = cv.getContext('2d'); cx.globalAlpha = a; cx.drawImage(bmp, 0, 0);
+      return new Uint8Array(await (await new Promise(r => cv.toBlob(r, 'image/png'))).arrayBuffer());
+    }));
+  } catch (e) { return [png, png]; }
+}
+// carta em Word (.docx): mesmo conteúdo e visual da carta em PDF, para editar e assinar no Word
+async function gerarCartaDocx(sel) {
+  const x = t => xEsc(String(t ?? '')), v = id => $(id).value;
+  const MES = MESES.map(m => m[0].toUpperCase() + m.slice(1));
+  const [y0, m0, d0] = (v('#ct-data') || hojeISO()).split('-'), dataExt = `Manaus, ${d0} de ${MES[+m0 - 1]} de ${y0}`;
+  const logo = await logoML(), dv = new DataView(logo.buffer, logo.byteOffset), lr = dv.getUint32(20) / dv.getUint32(16);   // altura/largura do PNG
+  const emu = pt => Math.round(pt * 12700), PR = '141419', CZ = '8C94AD', VD = '549945', VDC = 'E3F0D9', BD = 'A8C799';
+  const run = (t, o = {}) => `<w:r><w:rPr>${o.b ? '<w:b/>' : ''}${o.c ? `<w:color w:val="${o.c}"/>` : ''}${o.sz ? `<w:sz w:val="${o.sz}"/><w:szCs w:val="${o.sz}"/>` : ''}${o.u ? '<w:u w:val="single"/>' : ''}</w:rPr><w:t xml:space="preserve">${x(t)}</w:t></w:r>`;
+  const par = (runs, o = {}) => `<w:p><w:pPr><w:spacing w:before="${o.antes || 0}" w:after="0"/>${o.al ? `<w:jc w:val="${o.al}"/>` : ''}</w:pPr>${runs}</w:p>`;
+  const fosco = await cartaLogoFosco(logo);   // [logo a 55%, marca d'água a 7%]
+  const img = (id, w, h, alpha, anchor) => {
+    const g = `<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${id}" name="logo${id}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${alpha > 10000 ? 'rLogo' : 'rMarca'}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${w}" cy="${h}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic>`;
+    return anchor
+      ? `<w:r><w:drawing><wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" relativeHeight="0" behindDoc="1" locked="1" layoutInCell="1" allowOverlap="1"><wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="page"><wp:align>center</wp:align></wp:positionH><wp:positionV relativeFrom="page"><wp:align>center</wp:align></wp:positionV><wp:extent cx="${w}" cy="${h}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:wrapNone/><wp:docPr id="${id}" name="Marca d'água"/><wp:cNvGraphicFramePr/>${g}</wp:anchor></w:drawing></w:r>`
+      : `<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${w}" cy="${h}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="${id}" name="Logo"/><wp:cNvGraphicFramePr/>${g}</wp:inline></w:drawing></w:r>`;
+  };
+  const NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"';
+  // tabela dos projetos
+  const cols = [[1560, 'Nº DO PROJETO', 'center'], [4400, 'LOGRADOURO', 'center'], [3100, 'BAIRRO', 'center'], [760, 'TOTAL', 'right']];
+  const cel = (w, t, al, o = {}) => `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${o.fundo ? `<w:shd w:val="clear" w:color="auto" w:fill="${o.fundo}"/>` : ''}<w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:spacing w:before="40" w:after="40"/><w:jc w:val="${al}"/></w:pPr>${run(t, { b: o.b, c: o.c, sz: 16 })}</w:p></w:tc>`;
+  const borda = ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map(b => `<w:${b} w:val="single" w:sz="4" w:space="0" w:color="${BD}"/>`).join('');
+  const tabela = `<w:tbl><w:tblPr><w:tblW w:w="9820" w:type="dxa"/><w:tblBorders>${borda}</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="60" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${cols.map(c => `<w:gridCol w:w="${c[0]}"/>`).join('')}</w:tblGrid>
+    <w:tr><w:trPr><w:tblHeader/></w:trPr>${cols.map(c => cel(c[0], c[1], 'center', { b: 1, c: 'FFFFFF', fundo: VD })).join('')}</w:tr>
+    ${sel.map((d, i) => `<w:tr><w:trPr><w:cantSplit/></w:trPr>${[d.numero, d.logradouro, d.bairro || '', String(d.total_pontos || 0)].map((t, j) => cel(cols[j][0], t, cols[j][2], { fundo: i % 2 === 0 ? VDC : '' })).join('')}</w:tr>`).join('')}</w:tbl>`;
+  const lk = v('#ct-link').trim();
+  const link = lk ? `<w:hyperlink r:id="rLink">${run(lk, { c: '0563C1', u: 1 })}</w:hyperlink>` : run('(link não informado)');
+  const corpo = [
+    par(run(dataExt), { al: 'right' }),
+    par(run(v('#ct-num'), { b: 1 })),
+    par(run('À ') + run(v('#ct-dest') + ',', { b: 1 }), { antes: 600 }),
+    par(run('Att.: ') + run(v('#ct-att'), { b: 1 }), { antes: 360 }),
+    par(run(v('#ct-attc'))),
+    par(run('Assunto: ', { b: 1 }) + run(v('#ct-ass')), { antes: 360, al: 'both' }),
+    par(run('Referência: ', { b: 1 }) + run(v('#ct-ref')), { antes: 160, al: 'both' }),
+    par(run('Prezados Senhores,'), { antes: 200 }),
+    par(run('Encaminhamos os seguintes AS Builts dos Projetos:'), { antes: 360 }),
+    par('', { antes: 80 }), tabela,
+    par(run('E o link para acesso:'), { antes: 360 }),
+    `<w:p><w:pPr><w:spacing w:before="200" w:after="0"/></w:pPr>${link}</w:p>`,
+    par(run('Sem mais, por esta nos colocamos à disposição de quaisquer esclarecimentos que se fizerem necessários.'), { antes: 360, al: 'both' }),
+    par(run(v('#ct-nome'), { b: 1 }), { antes: 1600 }),
+    par(run(v('#ct-cargo')), { antes: 400 })].join('');
+  const sect = `<w:sectPr><w:headerReference w:type="default" r:id="rCab"/><w:footerReference w:type="default" r:id="rRod"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="2360" w:right="1040" w:bottom="1700" w:left="1040" w:header="600" w:footer="500" w:gutter="0"/></w:sectPr>`;
+  const doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${NS}><w:body>${corpo}${sect}</w:body></w:document>`;
+  const cab = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr ${NS}><w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr>${img(1, emu(115), emu(115 * lr), 55000)}${img(2, emu(380), emu(380 * lr), 7000, true)}</w:p></w:hdr>`;
+  const cinza = t => run(t, { b: 1, c: CZ, sz: 17 });
+  const rod = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr ${NS}><w:p><w:pPr><w:spacing w:after="0"/></w:pPr>${cinza('Rua Belo Horizonte, 953 – Adrianópolis – Cep 69.057-060')}</w:p>
+    <w:p><w:pPr><w:tabs><w:tab w:val="center" w:pos="4913"/></w:tabs><w:spacing w:after="0"/></w:pPr>${cinza('Tel: 2129-4800')}<w:r><w:tab/></w:r><w:r><w:rPr><w:color w:val="${CZ}"/><w:sz w:val="18"/></w:rPr><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:rPr><w:color w:val="${CZ}"/><w:sz w:val="18"/></w:rPr><w:instrText xml:space="preserve"> PAGE </w:instrText></w:r><w:r><w:rPr><w:color w:val="${CZ}"/><w:sz w:val="18"/></w:rPr><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:rPr><w:color w:val="${CZ}"/><w:sz w:val="18"/></w:rPr><w:t>1</w:t></w:r><w:r><w:rPr><w:color w:val="${CZ}"/><w:sz w:val="18"/></w:rPr><w:fldChar w:fldCharType="end"/></w:r></w:p></w:ftr>`;
+  const estilos = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Arial" w:cs="Arial"/><w:color w:val="${PR}"/><w:sz w:val="21"/><w:szCs w:val="21"/><w:lang w:val="pt-BR"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="264" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style></w:styles>`;
+  const REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  const blob = zipStore({
+    '[Content_Types].xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/></Types>',
+    '_rels/.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL}/officeDocument" Target="word/document.xml"/></Relationships>`,
+    'word/_rels/document.xml.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rEst" Type="${REL}/styles" Target="styles.xml"/><Relationship Id="rCab" Type="${REL}/header" Target="header1.xml"/><Relationship Id="rRod" Type="${REL}/footer" Target="footer1.xml"/>${lk ? `<Relationship Id="rLink" Type="${REL}/hyperlink" Target="${x(lk)}" TargetMode="External"/>` : ''}</Relationships>`,
+    'word/_rels/header1.xml.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rLogo" Type="${REL}/image" Target="media/logo.png"/><Relationship Id="rMarca" Type="${REL}/image" Target="media/marca.png"/></Relationships>`,
+    'word/document.xml': doc, 'word/styles.xml': estilos, 'word/header1.xml': cab, 'word/footer1.xml': rod, 'word/media/logo.png': fosco[0], 'word/media/marca.png': fosco[1]
+  });
+  return new Blob([blob], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+}
+
 // ---------- relatório em PDF ----------
 async function gerarRelatorio(sel, setores, anoTxt) {
   const { PDFDocument, StandardFonts, rgb } = PDFLib; const pdf = await PDFDocument.create();

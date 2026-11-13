@@ -11,7 +11,9 @@ function agIniciar() {
   $('#ag-carta').onclick = abrirCarta; $('#ag-enviar').onclick = registrarEnvio; $('#ag-unidos-bt').onclick = agUnidosTodos;
   $('#ct-gerar').onclick = cartaPrevia; ['#ct-num', '#ct-data', '#ct-dest', '#ct-att', '#ct-attc', '#ct-ass', '#ct-ref', '#ct-link', '#ct-nome', '#ct-cargo'].forEach(s => $(s).addEventListener('change', cartaPrevia));
   AG.vc = criaVisor({ area: '#ct-area', canvas: '#ct-cv' });
-  $('#ct-baixar').onclick = () => { if (!AG.carta) return; if (!$('#ct-link').value.trim()) { toast('Cole o link de acesso antes', true); return; } baixarBlob('carta-' + $('#ct-num').value.replace(/\W+/g, '-') + '.pdf', new Blob([AG.carta], { type: 'application/pdf' })); };
+  const cartaOk = () => { if (!$('#ct-link').value.trim()) { toast('Cole o link de acesso antes', true); return false; } return true; }, cartaNome = ext => 'carta-' + $('#ct-num').value.replace(/\W+/g, '-') + '.' + ext;
+  $('#ct-baixar').onclick = async () => { if (!cartaOk()) return; const sel = filaDe(5).filter(d => AG.sel.has(d.id)); const b = await tarefa(() => gerarCartaDocx(sel)); if (b) baixarBlob(cartaNome('docx'), b); };   // a carta sai em Word
+  $('#ct-pdf').onclick = () => { if (!AG.carta || !cartaOk()) return; baixarBlob(cartaNome('pdf'), new Blob([AG.carta], { type: 'application/pdf' })); };
   $('#ct-anexar').onclick = () => { if (!AG.carta) return; if (!$('#ct-link').value.trim()) { $('#ct-link').closest('.campo').classList.add('invalido'); toast('Cole o link de acesso antes de usar a carta', true); return; }
     $('#ag-of').value = $('#ct-num').value; $('#ag-data').value = $('#ct-data').value; AG.cartaPronta = { bytes: AG.carta, num: $('#ct-num').value, link: $('#ct-link').value.trim() };
     fechaModal('#modal-carta'); toast('Carta pronta. Ela é guardada junto com o registro do envio.'); };
