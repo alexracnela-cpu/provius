@@ -391,7 +391,7 @@ function geraXlsxCarga(p, t, asbuilt) {
   junta(r, 8, 11, 'POTÊNCIA REDUZIDA (W):', S.redR); put(r, 12, T.red, S.redN, `G${rp}-M${rp}`); r++;
   junta(r, 8, 11, 'PERCENTUAL REDUZIDO:', S.redR); put(r, 12, T.pct, S.pct, `IF(G${rp}=0,0,M${r - 1}/G${rp})`); r += 2;
   // expansão (mesmas colunas do padrão modernizado)
-  junta(r, 0, NC, 'TABELA DE CARGA - EXPANSÃO', S.faixa); r++;
+  junta(r, 0, NC, 'TABELA DE CARGA - CRESCIMENTO VEGETATIVO', S.faixa); r++;
   junta(r, 0, 5, 'LOGRADOURO', S.cab); ['CLASSE', 'POTÊNCIA (W)', 'Lm/W', 'IRC', 'QTD', 'BRAÇO (M)', 'POTÊNCIA TOTAL (W)'].forEach((h, i) => put(r, 6 + i, h, S.cab)); r++;
   const e0 = r;
   t.exp.forEach(l => {
