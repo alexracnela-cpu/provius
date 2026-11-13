@@ -5,7 +5,8 @@
 // Tabela (gravada em processos.tabela_carga / tabela_carga_asb):
 //   { mod: [{lg, cl, pr, qr, pn, lm, irc, qn, br}],   modernização: retirado (pr, qr) e instalado (pn, lm, irc, qn, br)
 //     exp: [{lg, cl, pn, lm, irc, qn, br}],           expansão: pontos novos
-//     mat_aj: {descrição: qtd},  mat_extra: [{d, q}] } materiais corrigidos à mão e materiais a mais
+//     mat_aj: {descrição: qtd}, mat_nome: {descrição: novo nome}, mat_rem: [descrição],   materiais calculados corrigidos, renomeados ou tirados
+//     mat_extra: [{d, q}] }                                                              materiais a mais
 
 const TC_DESDE = '2026-11-14T00:00:00-04:00';   // processos criados a partir daqui precisam da tabela (igual ao SQL)
 const TC_PERDAS = { 70: 14, 100: 17, 150: 22, 250: 30, 400: 38, 1000: 58 };   // perda do reator; as demais potências não têm perda
@@ -16,11 +17,12 @@ const tcQ = v => +v || 0;
 let SEM_TC = false;   // banco ainda sem as colunas da tabela de carga: as telas funcionam como antes
 
 // ---------- cálculos ----------
-const tcVazia = () => ({ mod: [], exp: [], mat_aj: {}, mat_extra: [] });
+const tcVazia = () => ({ mod: [], exp: [], mat_aj: {}, mat_nome: {}, mat_rem: [], mat_extra: [] });
 function tcNormaliza(t) {
   t = t ? JSON.parse(JSON.stringify(t)) : tcVazia();
   t.mod = Array.isArray(t.mod) ? t.mod : []; t.exp = Array.isArray(t.exp) ? t.exp : [];
   t.mat_aj = t.mat_aj && typeof t.mat_aj === 'object' ? t.mat_aj : {}; t.mat_extra = Array.isArray(t.mat_extra) ? t.mat_extra : [];
+  t.mat_nome = t.mat_nome && typeof t.mat_nome === 'object' ? t.mat_nome : {}; t.mat_rem = Array.isArray(t.mat_rem) ? t.mat_rem : [];
   delete t.por; delete t.em; return t;
 }
 function tcTotais(t) {
@@ -43,7 +45,6 @@ function tcMateriaisAuto(t) {
   t.mod.forEach(r => conta(r, false)); t.exp.forEach(r => conta(r, true));
   const L = modL + expL, m = [];
   Object.entries(bracos).sort((a, b) => a[0] - b[0]).forEach(([b, q]) => m.push(['BRAÇO GALVANIZADO ' + Math.round(b * 1000) + 'mm', q, 'braço de cada linha × quantidade']));
-  if (expL) m.push(['POSTE DE AÇO 6M', expL, '1 por luminária da expansão']);
   Object.entries(lum).sort((a, b) => a[0] - b[0]).forEach(([w, q]) => m.push(['LUMINÁRIA LED ' + w + 'W', q, 'soma das linhas']));
   if (L) {
     m.push(['CONECTOR PERFURANTE', L * 2, '2 por luminária']);
@@ -54,11 +55,13 @@ function tcMateriaisAuto(t) {
   }
   return m;
 }
+const tcMatNome = (t, d) => (t.mat_nome || {})[d] ? String(t.mat_nome[d]).trim().toUpperCase() : d;   // descrição editada (em maiúsculas) ou a calculada
 // materiais finais (com as correções à mão e os materiais a mais): [descrição, quantidade]
 function tcMateriais(t) {
-  const m = tcMateriaisAuto(t).map(([d, q]) => [d, t.mat_aj && t.mat_aj[d] != null ? tcQ(t.mat_aj[d]) : q]);
+  const m = tcMateriaisAuto(t).filter(([d]) => !(t.mat_rem || []).includes(d))
+    .map(([d, q]) => [tcMatNome(t, d), t.mat_aj && t.mat_aj[d] != null ? tcQ(t.mat_aj[d]) : q]);
   (t.mat_extra || []).forEach(x => { if ((x.d || '').trim()) m.push([x.d.trim().toUpperCase(), tcQ(x.q)]); });
-  return m;
+  return m.filter(([, q]) => q > 0);   // quantidade zero não vai para o PDF nem para o Excel
 }
 // o que falta para a tabela valer (vazio = está ok)
 function tcFaltas(t) {
@@ -78,7 +81,7 @@ const tcLinhaExp = ult => ({ lg: ult?.lg || '', cl: ult?.cl || 'V5', pn: ult?.pn
 function tcParaGravar(t) {
   const vazia = r => !String(r.lg || '').trim() && !tcQ(r.qn) && !tcQ(r.qr);
   const lim = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v]));
-  return { mod: t.mod.filter(r => !vazia(r)).map(lim), exp: t.exp.filter(r => !vazia(r)).map(lim), mat_aj: t.mat_aj || {}, mat_extra: (t.mat_extra || []).filter(x => (x.d || '').trim()) };
+  return { mod: t.mod.filter(r => !vazia(r)).map(lim), exp: t.exp.filter(r => !vazia(r)).map(lim), mat_aj: t.mat_aj || {}, mat_nome: t.mat_nome || {}, mat_rem: t.mat_rem || [], mat_extra: (t.mat_extra || []).filter(x => (x.d || '').trim()) };
 }
 
 // ---------- editor na tela ----------
@@ -168,20 +171,29 @@ function tcResumo(pre, T) {
 }
 function tcMatDesenha(pre) {
   const E = TCED[pre], t = E.t, el = E.el.querySelector('[data-tc="mat"]'); if (!el) return;
-  if (el.contains(document.activeElement) && document.activeElement.dataset.mat != null) return;   // não atrapalha quem está digitando
+  if (el.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return;   // não atrapalha quem está digitando
   const auto = tcMateriaisAuto(t), baseM = E.base ? Object.fromEntries(tcMateriais(E.base)) : null;
-  // corrigido à mão para um material que não existe mais: some
+  // correção de material que não é mais calculado: some
   Object.keys(t.mat_aj).forEach(d => { if (!auto.some(m => m[0] === d)) delete t.mat_aj[d]; });
-  const linhas = auto.map(([d, q, regra]) => { const v = t.mat_aj[d] != null ? t.mat_aj[d] : q, aj = t.mat_aj[d] != null && +t.mat_aj[d] !== q;
-    return `<tr><td>${esc(d)}</td><td class="num"><input type="number" min="0" data-mat="${esc(d)}" value="${esc(v)}" class="${aj ? 'tc-aj' : ''}${baseM && baseM[d] !== +v ? ' tc-dif' : ''}" aria-label="Quantidade de ${esc(d)}"></td><td class="ajuda">${aj ? `corrigido · calculado: ${q} <button type="button" class="link-pdf" data-volta="${esc(d)}">voltar</button>` : esc(regra)}</td></tr>`; }).join('');
-  const extras = t.mat_extra.map((x, i) => `<tr><td><input type="text" data-ex="${i}" data-k="d" value="${esc(x.d || '')}" placeholder="descrição do material" aria-label="Descrição"></td><td class="num"><input type="number" min="0" data-ex="${i}" data-k="q" value="${esc(x.q ?? '')}" aria-label="Quantidade"></td><td><button type="button" class="rem" data-exrem="${i}" aria-label="Tirar">×</button></td></tr>`).join('');
-  el.innerHTML = `<div class="tab-wrap"><table class="tc-mat"><thead><tr><th>Descrição</th><th class="num">Qtd</th><th>Regra</th></tr></thead><tbody>${linhas + extras || '<tr><td colspan="3" class="vazio">Os materiais aparecem quando houver quantidade instalada.</td></tr>'}</tbody></table></div>
+  const vis = auto.filter(([d]) => !t.mat_rem.includes(d)), tirados = auto.filter(([d]) => t.mat_rem.includes(d));
+  const linhas = vis.map(([d, q, regra]) => { const v = t.mat_aj[d] != null ? t.mat_aj[d] : q, aj = t.mat_aj[d] != null && +t.mat_aj[d] !== q, nome = t.mat_nome[d] || d;
+    const nota = [aj ? `qtd corrigida (calculado: ${q})` : '', t.mat_nome[d] ? 'descrição editada' : ''].filter(Boolean).join(' · ');
+    return `<tr><td><input type="text" data-nome="${esc(d)}" value="${esc(nome)}" class="${t.mat_nome[d] ? 'tc-aj' : ''}" aria-label="Descrição">
+        <small class="tc-regra">${nota ? `${esc(nota)} · <button type="button" class="link-pdf" data-volta="${esc(d)}">voltar ao calculado</button>` : esc(regra)}</small></td>
+      <td class="num"><input type="number" min="0" data-mat="${esc(d)}" value="${esc(v)}" class="${aj ? 'tc-aj' : ''}${baseM && baseM[tcMatNome(t, d)] !== +v ? ' tc-dif' : ''}" aria-label="Quantidade de ${esc(nome)}"></td>
+      <td><button type="button" class="rem" data-tira="${esc(d)}" aria-label="Tirar ${esc(nome)}" title="Tirar da lista">×</button></td></tr>`; }).join('');
+  const extras = t.mat_extra.map((x, i) => `<tr><td><input type="text" data-ex="${i}" data-k="d" value="${esc(x.d || '')}" placeholder="descrição do material" aria-label="Descrição"><small class="tc-regra">material a mais</small></td><td class="num"><input type="number" min="0" data-ex="${i}" data-k="q" value="${esc(x.q ?? '')}" aria-label="Quantidade"></td><td><button type="button" class="rem" data-exrem="${i}" aria-label="Tirar" title="Tirar da lista">×</button></td></tr>`).join('');
+  el.innerHTML = `<div class="tab-wrap"><table class="tc-mat"><thead><tr><th>Descrição</th><th class="num">Qtd</th><th></th></tr></thead><tbody>${linhas + extras || '<tr><td colspan="3" class="vazio">Os materiais aparecem quando houver quantidade instalada.</td></tr>'}</tbody></table></div>
+    ${tirados.length ? `<p class="tc-tirados">Tirados da lista: ${tirados.map(([d]) => `<button type="button" class="tc-volta" data-repoe="${esc(d)}" title="Voltar para a lista">↺ ${esc(t.mat_nome[d] || d)}</button>`).join('')}</p>` : ''}
     <div class="total"><button type="button" class="btn peq" data-tc="addmat">+ Outro material</button></div>`;
-  el.querySelectorAll('[data-mat]').forEach(x => x.oninput = () => { const d = x.dataset.mat, q = auto.find(m => m[0] === d)?.[1]; if (x.value === '' || +x.value === q) delete t.mat_aj[d]; else t.mat_aj[d] = +x.value; x.classList.toggle('tc-aj', d in t.mat_aj); if (E.onMuda) E.onMuda(); });
-  el.querySelectorAll('[data-mat]').forEach(x => x.onchange = () => tcMatDesenha(pre));
-  el.querySelectorAll('[data-volta]').forEach(b => b.onclick = () => { delete t.mat_aj[b.dataset.volta]; tcMatDesenha(pre); });
-  el.querySelectorAll('[data-ex]').forEach(x => x.oninput = () => { t.mat_extra[+x.dataset.ex][x.dataset.k] = x.dataset.k === 'q' ? +x.value : x.value; });
-  el.querySelectorAll('[data-exrem]').forEach(b => b.onclick = () => { t.mat_extra.splice(+b.dataset.exrem, 1); tcMatDesenha(pre); });
+  const muda = () => { if (E.onMuda) E.onMuda(); };
+  el.querySelectorAll('[data-mat]').forEach(x => { x.oninput = () => { const d = x.dataset.mat, q = auto.find(m => m[0] === d)?.[1]; if (x.value === '' || +x.value === q) delete t.mat_aj[d]; else t.mat_aj[d] = +x.value; x.classList.toggle('tc-aj', d in t.mat_aj); muda(); }; x.onchange = () => { x.blur(); tcMatDesenha(pre); }; });
+  el.querySelectorAll('[data-nome]').forEach(x => { x.oninput = () => { const d = x.dataset.nome, v = x.value.trim(); if (!v || v.toUpperCase() === d.toUpperCase()) delete t.mat_nome[d]; else t.mat_nome[d] = v; x.classList.toggle('tc-aj', d in t.mat_nome); muda(); }; x.onchange = () => { x.blur(); tcMatDesenha(pre); }; });
+  el.querySelectorAll('[data-volta]').forEach(b => b.onclick = () => { delete t.mat_aj[b.dataset.volta]; delete t.mat_nome[b.dataset.volta]; tcMatDesenha(pre); muda(); });
+  el.querySelectorAll('[data-tira]').forEach(b => b.onclick = () => { if (!t.mat_rem.includes(b.dataset.tira)) t.mat_rem.push(b.dataset.tira); tcMatDesenha(pre); muda(); });
+  el.querySelectorAll('[data-repoe]').forEach(b => b.onclick = () => { t.mat_rem = t.mat_rem.filter(d => d !== b.dataset.repoe); tcMatDesenha(pre); muda(); });
+  el.querySelectorAll('[data-ex]').forEach(x => { x.oninput = () => { t.mat_extra[+x.dataset.ex][x.dataset.k] = x.dataset.k === 'q' ? +x.value : x.value; muda(); }; x.onchange = () => x.blur(); });
+  el.querySelectorAll('[data-exrem]').forEach(b => b.onclick = () => { t.mat_extra.splice(+b.dataset.exrem, 1); tcMatDesenha(pre); muda(); });
   el.querySelector('[data-tc="addmat"]').onclick = () => { t.mat_extra.push({ d: '', q: 1 }); tcMatDesenha(pre); const ins = el.querySelectorAll('[data-k="d"]'); ins[ins.length - 1]?.focus(); };
 }
 function tcAviso(pre, txt) { const a = TCED[pre]?.el.querySelector('[data-tc="aviso"]'); if (a) { a.hidden = !txt; a.innerHTML = txt || ''; } }

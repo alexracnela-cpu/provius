@@ -659,3 +659,10 @@ td input[type=number]{width:100px;text-align:right;font-family:var(--f-num)}
 .tc-t select[data-k=pr],.tc-t select[data-k=pn]{min-width:70px;padding-inline:5px}
 .tc-t{min-width:760px}
 .tc-t tfoot td{white-space:nowrap}
+.tc-mat td input[type=text]{width:100%;min-width:150px;font-size:13px;padding:6px 8px;text-transform:uppercase}
+.tc-tirados{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 16px 0;font-size:12.5px;color:var(--suave)}
+.tc-volta{font:600 12px var(--f-corpo);border:1px dashed var(--linha);background:none;color:var(--suave);border-radius:20px;padding:3px 10px;cursor:pointer;text-decoration:line-through}
+.tc-volta:hover{color:var(--azul);border-color:var(--azul);text-decoration:none}
+.tc-mat td{vertical-align:top}
+.tc-mat td.num,.tc-mat td:last-child{padding-top:6px}
+.tc-regra{display:block;margin:3px 2px 0;font-size:11.5px;color:var(--suave)}
