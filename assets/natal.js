@@ -23,6 +23,7 @@
     const topo = document.querySelector('.topo'); if (!topo) return;
     let el = document.getElementById('natal-luzes');
     if (!el) { el = mk('div'); el.id = 'natal-luzes'; el.setAttribute('aria-hidden', 'true'); topo.appendChild(el); }
+    if (!topo.clientWidth) return;   // cabeçalho escondido (tela de entrada): desenha quando aparecer
     const w = Math.max(320, topo.clientWidth), passo = 70, n = Math.ceil(w / passo) + 1;
     let fio = 'M0 2', lamps = '', lacos = '';
     for (let i = 0; i < n; i++) {
@@ -123,7 +124,11 @@
 
   function iniciar() {
     botao(); if (ligado) ligar();
-    let t; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { if (ligado) luzes(); }, 150); });
+    // redesenha a guirlanda sempre que a largura do cabeçalho muda (inclusive quando ele aparece depois da entrada)
+    const topo = document.querySelector('.topo'); let t, larg = 0;
+    const refaz = () => { clearTimeout(t); t = setTimeout(() => { const w = topo ? topo.clientWidth : 0; if (ligado && w && w !== larg) { larg = w; luzes(); } }, 100); };
+    if (topo && 'ResizeObserver' in window) new ResizeObserver(refaz).observe(topo);
+    addEventListener('resize', refaz);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
 })();

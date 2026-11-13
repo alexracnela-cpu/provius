@@ -26,6 +26,7 @@
 /* guirlanda de pinheiro com pisca-pisca na borda do cabeçalho */
 #natal-luzes{position:absolute;left:0;right:0;bottom:-15px;height:24px;pointer-events:none;overflow:visible;z-index:1}
 #natal-luzes svg{display:block;width:100%;height:24px;overflow:visible}
+#natal-luzes:empty{display:none}
 #natal-luzes .lamp{animation:natal-pisca 2.4s ease-in-out infinite}
 #natal-luzes .lamp.b{animation-delay:.8s}
 #natal-luzes .lamp.c{animation-delay:1.6s}
