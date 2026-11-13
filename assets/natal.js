@@ -157,13 +157,24 @@
     ${manga('M-21 39 Q-28 47 -21 54', i)}${punho(-20, 54, 25, i)}${luva(-17, 59, 15, -1, i)}` };
 
   // ---------- pose B: escondido, espiando (borda em y = 6) ----------
-  const ESPIA = { vb: [-30, -50, 72, 66], borda: 6, svg: (i) => defs(i) + `
+  // mão esquerda apontando para baixo (para a fila): a mesma luva, com o indicador para fora
+  const aponta = (i) => `
+    <g transform="translate(-21 6) rotate(10)">
+      <ellipse cx="5.6" cy="-1.5" rx="2.8" ry="3.8" fill="url(#luva${i})" transform="rotate(35 5.6 -1.5)"/>
+      <rect x="-2.4" y="1.5" width="4.4" height="9.5" rx="2.2" fill="url(#luva${i})"/>
+      <ellipse rx="6.8" ry="5.8" fill="url(#luva${i})"/>
+      <path d="M1.2 -4 V2.5 M4.4 -3.4 V2" stroke="${LUVA2}" stroke-width="1" stroke-linecap="round" opacity=".7"/>
+    </g>`;
+  const ESPIA = { vb: [-40, -50, 82, 78], borda: 6, svg: (i) => defs(i) + `
     <defs><clipPath id="c${i}"><rect x="-60" y="-80" width="140" height="86"/></clipPath></defs>
     <g clip-path="url(#c${i})"><g>
-      <animateTransform attributeName="transform" type="translate" values="0 52;0 52;0 0;0 0;0 52;0 52" keyTimes="0;.15;.25;.7;.8;1" dur="6s" repeatCount="indefinite"/>
-      <g><animateTransform attributeName="transform" type="rotate" values="0;-7;0;7;0" keyTimes="0;.35;.5;.65;1" dur="6s" repeatCount="indefinite"/>${cabeca(i)}</g>
+      <animateTransform attributeName="transform" type="translate" values="0 52;0 52;0 0;0 0;0 52;0 52" keyTimes="0;.12;.2;.74;.82;1" dur="7s" repeatCount="indefinite"/>
+      <g><animateTransform attributeName="transform" type="rotate" values="0;0;7;7;-6;-6;0;0" keyTimes="0;.2;.26;.32;.38;.7;.74;1" dur="7s" repeatCount="indefinite"/>${cabeca(i)}</g>
     </g></g>
-    ${luva(-19, 7, 0, -1, i)}${luva(19, 7, 0, 1, i)}` };
+    ${luva(19, 7, 0, 1, i)}
+    <g>${luva(-19, 7, 0, -1, i)}<animate attributeName="opacity" values="1;1;0;0;1;1" keyTimes="0;.37;.38;.7;.71;1" dur="7s" repeatCount="indefinite"/></g>
+    <g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.37;.38;.7;.71;1" dur="7s" repeatCount="indefinite"/>
+      <g><animateTransform attributeName="transform" type="translate" values="0 0;0 3.5;0 0" dur=".7s" repeatCount="indefinite"/>${aponta(i)}</g></g>` };
 
   // ---------- pose C: sentado na borda (borda em y = 50) ----------
   const perna = (x, atraso, e, i) => `<g transform="translate(${x} 50)"><g>
@@ -199,7 +210,7 @@
     // acenando: caixa de entrada (e a de trocar senha)
     document.querySelectorAll('#f-login, #f-senha').forEach(c => { if (!c.querySelector(':scope > .natal-noel')) c.append(noel(ACENA, 124, () => 'right:22px')); });
     // escondido: painel "Aguardando você"
-    document.querySelectorAll('.lado > .caixa').forEach(c => { if (c.querySelector('.fila') && !c.querySelector(':scope > .natal-noel')) c.append(noel(ESPIA, 64, () => 'right:30px')); });
+    document.querySelectorAll('.lado > .caixa').forEach(c => { if (c.querySelector('.fila') && !c.querySelector(':scope > .natal-noel')) c.append(noel(ESPIA, 72, () => 'right:30px')); });
     // sentado: em cima do primeiro cartão das etapas (tela Todos)
     const est = document.getElementById('esteira');
     if (est && !document.querySelector('.natal-noel-esteira')) {
