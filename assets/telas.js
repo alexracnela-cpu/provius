@@ -353,6 +353,12 @@ async function asbAbrir(idSel) {
   $('#a-hist').innerHTML = p.movimentos.map(m => `<li><span>${dataBR(m.em)}</span><b style="font-weight:500">${esc(m.por_nome || '')}: ${esc(textoMov(m))}</b></li>`).join('') || '<li><span></span><b style="font-weight:500">Histórico da planilha (sem movimentos registrados).</b></li>';
   $('#a-ok').textContent = naoAdq(p) ? 'Concluir processo (não adquirido, sem AGEMAN) ✓' : 'Concluir as built → pronto p/ AGEMAN';
   $('#a-obs').value = p.obs_asbuilt || ''; $('#a-up')._limpa();
+  // o as built já enviado (salvo antes): mostra o arquivo, para não parecer que sumiu
+  const jaAsb = p.arquivos.filter(a => a.tipo === 'asbuilt' && new Date(a.em) >= new Date(p.etapa_desde)).slice(-1)[0];
+  $('#a-up').classList.toggle('tem', !!jaAsb);
+  if (jaAsb) $('#a-up .nome').textContent = jaAsb.nome + ' · já enviado';
+  $('#a-arq-info').innerHTML = jaAsb ? `✓ Já enviado: <button type="button" class="link-pdf" id="a-ver-asb">${esc(jaAsb.nome)}</button> (${dataHora(jaAsb.em)}${jaAsb.por_nome ? ' por ' + esc(jaAsb.por_nome) : ''}). Escolha outro só se precisar mandar uma versão nova; o anterior fica no histórico.` : '';
+  if (jaAsb) $('#a-ver-asb').onclick = () => verArquivo(jaAsb, 'As built ' + p.numero);
   $('#a-sec-pot').hidden = p.tipo === 'R';   // R- usa os itens de reequilíbrio, não potências
   asbPotResumo(p); potPreenche(p, 'a'); asbPotEditar(false); tcTela('a', p);
   AB.visor.limpa(); $('#v-fonte').textContent = pl ? 'Carregando…' : 'Sem PDF de plaquetas neste processo.';

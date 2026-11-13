@@ -669,3 +669,5 @@ td input[type=number]{width:100px;text-align:right;font-family:var(--f-num)}
 
 .ag-unidos{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--linha);background:var(--sup2)}
 .ag-uni{font-weight:700}
+.arq-ja{display:block;margin-top:6px;color:var(--ok)}
+.arq-ja:empty{display:none}
