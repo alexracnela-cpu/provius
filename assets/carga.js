@@ -255,16 +255,18 @@ async function gerarTabelaCarga(p, t, o = {}) {
   txt('ENDEREÇO', M + 14, y - 18.5, { f: FB, sz: 7, cor: SV });
   txt(corta(end, FB, 14, LW - 90), M + 70, y - 20, { f: FB, sz: 14, cor: AZ });
   y -= 44;
-  // cartões
+  // cartões · bloco sem linhas não aparece no PDF
+  const temMod = t.mod.length > 0 || !t.exp.length, temExp = t.exp.length > 0;
   {
+    const det = (a, b) => [temMod ? a : '', temExp ? b : ''].filter(Boolean).join(' · ');
     const ks = [
-      ['Pontos instalados', n(T.qM + T.qE), `${T.qM} modernização · ${T.qE} cresc. vegetativo`, B && B.qM + B.qE !== T.qM + T.qE ? 'projeto: ' + n(B.qM + B.qE) : ''],
+      ['Pontos instalados', n(T.qM + T.qE), det(`${T.qM} modernização`, `${T.qE} cresc. vegetativo`), B && B.qM + B.qE !== T.qM + T.qE ? 'projeto: ' + n(B.qM + B.qE) : ''],
       ['Potência retirada', n(T.pR) + ' W', `${T.qR} luminárias · com perda do reator`, B && B.pR !== T.pR ? 'projeto: ' + n(B.pR) + ' W' : ''],
-      ['Potência instalada', n(T.pM + T.pE) + ' W', `${n(T.pM)} W modernização · ${n(T.pE)} W cresc. vegetativo`, B && B.pM + B.pE !== T.pM + T.pE ? 'projeto: ' + n(B.pM + B.pE) + ' W' : ''],
-      ['Redução na modernização', T.qR ? n(T.red) + ' W' : '—', T.qR ? (T.pct * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '% menos que o retirado' : 'sem retirada', '']];
-    const g = 10, w = (LW - 3 * g) / 4, h = 50;
+      ['Potência total instalada', n(T.pM + T.pE) + ' W', det(`${n(T.pM)} W modernização`, `${n(T.pE)} W cresc. vegetativo`), B && B.pM + B.pE !== T.pM + T.pE ? 'projeto: ' + n(B.pM + B.pE) + ' W' : ''],
+      ['Redução na modernização', T.qR ? n(T.red) + ' W' : '—', T.qR ? (T.pct * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '% menos que o retirado' : 'sem retirada', '']].filter(k => temMod || !/retirada|Redução/.test(k[0]));   // sem modernização, só pontos e potência instalada
+    const g = 10, w = (LW - (ks.length - 1) * g) / ks.length, h = 50;
     ks.forEach(([rot, val, sub, dif], i) => {
-      const x = M + i * (w + g), dest = i === 3 && T.qR;
+      const x = M + i * (w + g), dest = /^Redução/.test(rot) && T.qR;
       arred(x, y - h, w, h, dest ? INC : AZC); arred(x, y - h, 4, h, dest ? IN : AZ, null, [RAIO, 0, 0, RAIO]);
       txt(rot.toUpperCase(), x + 11, y - 13, { f: FB, sz: 6.5, cor: SV });
       txt(val, x + 11, y - 32, { f: FB, sz: 17, cor: dest ? IN : AZ });
@@ -312,12 +314,12 @@ async function gerarTabelaCarga(p, t, o = {}) {
     y -= rh + 22;
   };
   const brc = r => tcQ(r.br) ? String(r.br).replace('.', ',') : '—';
-  tabela('Modernização', 'troca de luminárias existentes', [
+  if (temMod) tabela('Modernização', 'troca de luminárias existentes', [
     { t: 'LOGRADOURO', w: 0, v: r => r.lg }, { t: 'CLASSE', w: 42, al: 'c', v: r => r.cl },
     { t: 'POTÊNCIA\n(W)', w: 52, al: 'r', g: 'r', v: r => n(r.pr) }, { t: 'PERDA\nREATOR (W)', w: 54, al: 'r', g: 'r', v: r => n(tcPerda(tcQ(r.pr))) }, { t: 'QTD', w: 38, al: 'r', g: 'r', v: r => n(r.qr) }, { t: 'TOTAL\n(W)', w: 60, al: 'r', g: 'r', calc: 1, v: r => n(tcQ(r.qr) * (tcQ(r.pr) + tcPerda(tcQ(r.pr)))) },
     { t: 'POTÊNCIA\n(W)', w: 52, al: 'r', g: 'i', v: r => n(r.pn) }, { t: 'LM/W', w: 44, al: 'r', g: 'i', v: r => r.lm || '—' }, { t: 'IRC', w: 40, al: 'c', g: 'i', v: r => r.irc || '—' }, { t: 'QTD', w: 38, al: 'r', g: 'i', v: r => n(r.qn) }, { t: 'BRAÇO\n(M)', w: 44, al: 'r', g: 'i', v: brc }, { t: 'TOTAL\n(W)', w: 86, al: 'r', g: 'i', calc: 1, v: r => n(tcQ(r.qn) * tcQ(r.pn)) }],
     t.mod, ['TOTAL', null, null, null, n(T.qR), n(T.pR), null, null, null, n(T.qM), null, n(T.pM)]);
-  tabela('Crescimento vegetativo', 'pontos novos', [
+  if (temExp) tabela('Crescimento vegetativo', 'pontos novos', [
     { t: 'LOGRADOURO', w: 0, v: r => r.lg }, { t: 'CLASSE', w: 42, al: 'c', v: r => r.cl },
     { t: 'POTÊNCIA\n(W)', w: 52, al: 'r', v: r => n(r.pn) }, { t: 'LM/W', w: 44, al: 'r', v: r => r.lm || '—' }, { t: 'IRC', w: 40, al: 'c', v: r => r.irc || '—' }, { t: 'QTD', w: 38, al: 'r', v: r => n(r.qn) }, { t: 'BRAÇO\n(M)', w: 44, al: 'r', v: brc }, { t: 'TOTAL\n(W)', w: 86, al: 'r', calc: 1, v: r => n(tcQ(r.qn) * tcQ(r.pn)) }],
     t.exp, ['TOTAL', null, null, null, null, n(T.qE), null, n(T.pE)]);
@@ -370,38 +372,43 @@ function geraXlsxCarga(p, t, asbuilt) {
   const put = (r, c, v, s, f) => { (cel[r] = cel[r] || {})[c] = { v, s, f }; };
   const junta = (r, c1, c2, v, s) => { for (let c = c1; c <= c2; c++) put(r, c, c === c1 ? v : null, s); if (c2 > c1) merges.push(colL(c1) + r + ':' + colL(c2) + r); };
   const NC = 12;   // colunas A..M (0..12)
+  const altura = { 1: 30, 2: 20 };
   junta(1, 0, NC, 'PROJETO ' + p.numero.replace('/', '-') + (asbuilt ? ' - ASBUILT' : ''), S.tit);
   junta(2, 0, NC, [p.logradouro, p.bairro, p.zona ? 'ZONA ' + p.zona : ''].filter(Boolean).join(' - '), S.sub);
-  junta(3, 0, NC, 'TABELA DE CARGA - MODERNIZAÇÃO', S.faixa);
-  junta(5, 0, 1, 'VIAS', S.vias); junta(5, 2, 6, 'PADRÃO RETIRADO', S.ret); junta(5, 7, 12, 'PADRÃO MODERNIZADO', S.mod);
-  ['LOGRADOURO', 'CLASSE', 'POTÊNCIA (W)', 'PERDA (W)', 'POTÊNCIA RETIRADA (W)', 'QTD', 'POTÊNCIA TOTAL (W)', 'POTÊNCIA (W)', 'Lm/W', 'IRC', 'QTD', 'BRAÇO (M)', 'POTÊNCIA TOTAL (W)'].forEach((h, i) => put(6, i, h, S.cab));
-  let r = 7; const r0 = r;
-  t.mod.forEach(l => {
-    const pr = tcQ(l.pr), pe = tcPerda(pr), qr = tcQ(l.qr), pn = tcQ(l.pn), qn = tcQ(l.qn);
-    put(r, 0, l.lg || '', S.txt); put(r, 1, l.cl || '', S.num); put(r, 2, pr, S.num); put(r, 3, pe, S.num); put(r, 4, pr + pe, S.num, `C${r}+D${r}`); put(r, 5, qr, S.num); put(r, 6, qr * (pr + pe), S.num, `F${r}*E${r}`);
-    put(r, 7, pn, S.num); put(r, 8, l.lm === '' || l.lm == null ? null : (isNaN(+l.lm) ? l.lm : +l.lm), S.num); put(r, 9, l.irc || '', S.num); put(r, 10, qn, S.num); put(r, 11, tcQ(l.br) || null, S.num); put(r, 12, qn * pn, S.num, `H${r}*K${r}`); r++;
-  });
-  if (r === r0) { for (let c = 0; c <= NC; c++) put(r, c, null, c ? S.num : S.txt); r++; }
-  const ru = r - 1; r++;
-  junta(r, 0, 4, 'QUANTIDADE RETIRADA', S.totR); put(r, 5, T.qR, S.totN, `SUM(F${r0}:F${ru})`); put(r, 6, null, S.totN);
-  junta(r, 7, 9, 'QUANTIDADE INSTALADA', S.totR); put(r, 10, T.qM, S.totN, `SUM(K${r0}:K${ru})`); junta(r, 11, 12, null, S.totN); r++;
-  const rp = r;
-  junta(r, 0, 5, 'POTÊNCIA TOTAL (W)', S.totR); put(r, 6, T.pR, S.totN, `SUM(G${r0}:G${ru})`);
-  junta(r, 7, 11, 'POTÊNCIA TOTAL (W)', S.totR); put(r, 12, T.pM, S.totN, `SUM(M${r0}:M${ru})`); r += 2;
-  junta(r, 8, 11, 'POTÊNCIA REDUZIDA (W):', S.redR); put(r, 12, T.red, S.redN, `G${rp}-M${rp}`); r++;
-  junta(r, 8, 11, 'PERCENTUAL REDUZIDO:', S.redR); put(r, 12, T.pct, S.pct, `IF(G${rp}=0,0,M${r - 1}/G${rp})`); r += 2;
-  // expansão (mesmas colunas do padrão modernizado)
-  junta(r, 0, NC, 'TABELA DE CARGA - CRESCIMENTO VEGETATIVO', S.faixa); r++;
-  junta(r, 0, 5, 'LOGRADOURO', S.cab); ['CLASSE', 'POTÊNCIA (W)', 'Lm/W', 'IRC', 'QTD', 'BRAÇO (M)', 'POTÊNCIA TOTAL (W)'].forEach((h, i) => put(r, 6 + i, h, S.cab)); r++;
-  const e0 = r;
-  t.exp.forEach(l => {
-    const pn = tcQ(l.pn), qn = tcQ(l.qn);
-    junta(r, 0, 5, l.lg || '', S.txt); put(r, 6, l.cl || '', S.num); put(r, 7, pn, S.num); put(r, 8, l.lm === '' || l.lm == null ? null : (isNaN(+l.lm) ? l.lm : +l.lm), S.num); put(r, 9, l.irc || '', S.num); put(r, 10, qn, S.num); put(r, 11, tcQ(l.br) || null, S.num); put(r, 12, qn * pn, S.num, `H${r}*K${r}`); r++;
-  });
-  if (r === e0) { junta(r, 0, 5, null, S.txt); for (let c = 6; c <= NC; c++) put(r, c, null, S.num); r++; }
-  const eu = r - 1;
-  junta(r, 0, 9, 'QUANTIDADE INSTALADA', S.totR); put(r, 10, T.qE, S.totN, `SUM(K${e0}:K${eu})`); junta(r, 11, 12, null, S.totN); r++;
-  junta(r, 0, 11, 'POTÊNCIA TOTAL (W)', S.totR); put(r, 12, T.pE, S.totN, `SUM(M${e0}:M${eu})`); r += 2;
+  const temMod = t.mod.length > 0 || !t.exp.length, temExp = t.exp.length > 0;   // bloco sem linhas não aparece
+  let r = 3;
+  if (temMod) {
+    altura[r] = 22; junta(r, 0, NC, 'TABELA DE CARGA - MODERNIZAÇÃO', S.faixa); r += 2;
+    junta(r, 0, 1, 'VIAS', S.vias); junta(r, 2, 6, 'PADRÃO RETIRADO', S.ret); junta(r, 7, 12, 'PADRÃO MODERNIZADO', S.mod); r++;
+    ['LOGRADOURO', 'CLASSE', 'POTÊNCIA (W)', 'PERDA (W)', 'POTÊNCIA RETIRADA (W)', 'QTD', 'POTÊNCIA TOTAL (W)', 'POTÊNCIA (W)', 'Lm/W', 'IRC', 'QTD', 'BRAÇO (M)', 'POTÊNCIA TOTAL (W)'].forEach((h, i) => put(r, i, h, S.cab)); altura[r] = 30; r++;
+    const r0 = r;
+    t.mod.forEach(l => {
+      const pr = tcQ(l.pr), pe = tcPerda(pr), qr = tcQ(l.qr), pn = tcQ(l.pn), qn = tcQ(l.qn);
+      put(r, 0, l.lg || '', S.txt); put(r, 1, l.cl || '', S.num); put(r, 2, pr, S.num); put(r, 3, pe, S.num); put(r, 4, pr + pe, S.num, `C${r}+D${r}`); put(r, 5, qr, S.num); put(r, 6, qr * (pr + pe), S.num, `F${r}*E${r}`);
+      put(r, 7, pn, S.num); put(r, 8, l.lm === '' || l.lm == null ? null : (isNaN(+l.lm) ? l.lm : +l.lm), S.num); put(r, 9, l.irc || '', S.num); put(r, 10, qn, S.num); put(r, 11, tcQ(l.br) || null, S.num); put(r, 12, qn * pn, S.num, `H${r}*K${r}`); r++;
+    });
+    if (r === r0) { for (let c = 0; c <= NC; c++) put(r, c, null, c ? S.num : S.txt); r++; }
+    const ru = r - 1; r++;
+    junta(r, 0, 4, 'QUANTIDADE RETIRADA', S.totR); put(r, 5, T.qR, S.totN, `SUM(F${r0}:F${ru})`); put(r, 6, null, S.totN);
+    junta(r, 7, 9, 'QUANTIDADE INSTALADA', S.totR); put(r, 10, T.qM, S.totN, `SUM(K${r0}:K${ru})`); junta(r, 11, 12, null, S.totN); r++;
+    const rp = r;
+    junta(r, 0, 5, 'POTÊNCIA TOTAL (W)', S.totR); put(r, 6, T.pR, S.totN, `SUM(G${r0}:G${ru})`);
+    junta(r, 7, 11, 'POTÊNCIA TOTAL (W)', S.totR); put(r, 12, T.pM, S.totN, `SUM(M${r0}:M${ru})`); r += 2;
+    junta(r, 8, 11, 'POTÊNCIA REDUZIDA (W):', S.redR); put(r, 12, T.red, S.redN, `G${rp}-M${rp}`); r++;
+    junta(r, 8, 11, 'PERCENTUAL REDUZIDO:', S.redR); put(r, 12, T.pct, S.pct, `IF(G${rp}=0,0,M${r - 1}/G${rp})`); r += 2;
+  }
+  if (temExp) {   // crescimento vegetativo (mesmas colunas do padrão modernizado)
+    altura[r] = 22; junta(r, 0, NC, 'TABELA DE CARGA - CRESCIMENTO VEGETATIVO', S.faixa); r++;
+    junta(r, 0, 5, 'LOGRADOURO', S.cab); ['CLASSE', 'POTÊNCIA (W)', 'Lm/W', 'IRC', 'QTD', 'BRAÇO (M)', 'POTÊNCIA TOTAL (W)'].forEach((h, i) => put(r, 6 + i, h, S.cab)); altura[r] = 30; r++;
+    const e0 = r;
+    t.exp.forEach(l => {
+      const pn = tcQ(l.pn), qn = tcQ(l.qn);
+      junta(r, 0, 5, l.lg || '', S.txt); put(r, 6, l.cl || '', S.num); put(r, 7, pn, S.num); put(r, 8, l.lm === '' || l.lm == null ? null : (isNaN(+l.lm) ? l.lm : +l.lm), S.num); put(r, 9, l.irc || '', S.num); put(r, 10, qn, S.num); put(r, 11, tcQ(l.br) || null, S.num); put(r, 12, qn * pn, S.num, `H${r}*K${r}`); r++;
+    });
+    const eu = r - 1;
+    junta(r, 0, 9, 'QUANTIDADE INSTALADA', S.totR); put(r, 10, T.qE, S.totN, `SUM(K${e0}:K${eu})`); junta(r, 11, 12, null, S.totN); r++;
+    junta(r, 0, 11, 'POTÊNCIA TOTAL (W)', S.totR); put(r, 12, T.pE, S.totN, `SUM(M${e0}:M${eu})`); r += 2;
+  }
   // materiais
   junta(r, 0, 3, 'TABELA DE MATERIAIS UTILIZADOS', S.matT); r++;
   junta(r, 0, 2, 'DESCRIÇÃO', S.neg); put(r, 3, 'QTD', S.neg); r++;
@@ -414,7 +421,6 @@ function geraXlsxCarga(p, t, asbuilt) {
     if (typeof x.v === 'number') return `<c r="${ref}"${st}><v>${x.v}</v></c>`;
     return `<c r="${ref}" t="inlineStr"${st}><is><t xml:space="preserve">${xEsc(x.v)}</t></is></c>`;
   };
-  const altura = { 1: 30, 2: 20, 3: 22, 6: 30 };
   const rows = Object.keys(cel).map(Number).sort((a, b) => a - b).map(rr => `<row r="${rr}"${altura[rr] ? ` ht="${altura[rr]}" customHeight="1"` : ''}>${Object.keys(cel[rr]).map(Number).sort((a, b) => a - b).map(c => cell(rr, c, cel[rr][c])).join('')}</row>`).join('');
   const larg = [40, 8, 11, 9, 12, 7, 12, 11, 8, 7, 7, 9, 12];
   const nome = asbuilt ? 'ASBUILT' : 'TABELA DE CARGA';
