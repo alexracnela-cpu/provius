@@ -161,9 +161,9 @@
   const aponta = (i) => `
     <g transform="translate(-21 6) rotate(10)">
       <ellipse cx="5.6" cy="-1.5" rx="2.8" ry="3.8" fill="url(#luva${i})" transform="rotate(35 5.6 -1.5)"/>
-      <rect x="-2.4" y="1.5" width="4.4" height="9.5" rx="2.2" fill="url(#luva${i})"/>
+      <rect x="1.4" y="1" width="4.4" height="9.5" rx="2.2" fill="url(#luva${i})" transform="rotate(-8 3.6 1)"/>
       <ellipse rx="6.8" ry="5.8" fill="url(#luva${i})"/>
-      <path d="M1.2 -4 V2.5 M4.4 -3.4 V2" stroke="${LUVA2}" stroke-width="1" stroke-linecap="round" opacity=".7"/>
+      <path d="M-3.8 -3.6 V2.4 M-0.6 -4 V2.6" stroke="${LUVA2}" stroke-width="1" stroke-linecap="round" opacity=".7"/>
     </g>`;
   const ESPIA = { vb: [-40, -50, 82, 78], borda: 6, svg: (i) => defs(i) + `
     <defs><clipPath id="c${i}"><rect x="-60" y="-80" width="140" height="86"/></clipPath></defs>
