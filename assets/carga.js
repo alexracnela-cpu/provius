@@ -3,8 +3,8 @@
 // e gera o PDF (e o Excel, como opção). R- (reequilíbrio) não tem tabela de carga.
 //
 // Tabela (gravada em processos.tabela_carga / tabela_carga_asb):
-//   { mod: [{lg, cl, pr, qr, pn, lm, irc, qn, br}],   modernização: retirado (pr, qr) e instalado (pn, lm, irc, qn, br)
-//     exp: [{lg, cl, pn, lm, irc, qn, br, bl}],       expansão: pontos novos · bl: 'dest' = linha do bloco Iluminação de destaque
+//   { mod: [{lg, cl, pr, qr, pn, lm, irc, qn}],       modernização: retirado (pr, qr) e instalado (pn, lm, irc, qn)
+//     exp: [{lg, cl, pn, lm, irc, qn, bl}],           expansão: pontos novos · bl: 'dest' = linha do bloco Iluminação de destaque
 //                                                     (gravado junto com a expansão para o banco ver as linhas; na tela fica em t.dest)
 //     mat_aj: {descrição: qtd}, mat_nome: {descrição: novo nome}, mat_rem: [descrição],   materiais calculados corrigidos, renomeados ou tirados
 //     mat_extra: [{d, q}] }                                                              materiais a mais
@@ -44,11 +44,11 @@ function tcModalidades(t) {
 }
 // materiais calculados: [descrição, quantidade, regra]
 function tcMateriaisAuto(t) {
-  const lum = {}, bracos = {}; let modL = 0, expL = 0;
-  const conta = (r, exp) => { const q = tcQ(r.qn); if (!q) return; exp ? expL += q : modL += q; if (tcQ(r.pn)) lum[r.pn] = (lum[r.pn] || 0) + q; if (tcQ(r.br)) bracos[tcQ(r.br)] = (bracos[tcQ(r.br)] || 0) + q; };
+  const lum = {}; let modL = 0, expL = 0;
+  const conta = (r, exp) => { const q = tcQ(r.qn); if (!q) return; exp ? expL += q : modL += q; if (tcQ(r.pn)) lum[r.pn] = (lum[r.pn] || 0) + q; };
   t.mod.forEach(r => conta(r, false)); [...t.exp, ...t.dest].forEach(r => conta(r, true));
   const L = modL + expL, m = [];
-  Object.entries(bracos).sort((a, b) => a[0] - b[0]).forEach(([b, q]) => m.push(['BRAÇO GALVANIZADO ' + Math.round(b * 1000) + 'mm', q, 'braço de cada linha × quantidade']));
+  if (L) m.push(['BRAÇO GALVANIZADO 2000mm', L, '1 por luminária · tamanho e quantidade dá para corrigir aqui']);   // o braço não vai mais na tabela, só nos materiais
   Object.entries(lum).sort((a, b) => a[0] - b[0]).forEach(([w, q]) => m.push(['LUMINÁRIA LED ' + w + 'W', q, 'soma das linhas']));
   if (L) {
     m.push(['CONECTOR PERFURANTE', L * 2, '2 por luminária']);
@@ -79,8 +79,8 @@ function tcFaltas(t) {
 }
 const tcTemLinhas = t => !!t && ((t.mod || []).some(r => tcQ(r.qn) || tcQ(r.qr)) || (t.exp || []).some(r => tcQ(r.qn)) || (t.dest || []).some(r => tcQ(r.qn)));
 const tcExige = p => !!p && ['', 'C'].includes(p.tipo || '') && new Date(p.criado_em) >= new Date(TC_DESDE);
-const tcLinhaMod = ult => ({ lg: ult?.lg || '', cl: ult?.cl || 'V5', pr: ult?.pr || 70, qr: '', pn: ult?.pn || 40, lm: ult?.lm || '', irc: ult?.irc || '>70', qn: '', br: ult?.br ?? 2 });
-const tcLinhaExp = ult => ({ lg: ult?.lg || '', cl: ult?.cl || 'V5', pn: ult?.pn || 50, lm: ult?.lm || '', irc: ult?.irc || '>70', qn: '', br: ult?.br ?? '' });
+const tcLinhaMod = ult => ({ lg: ult?.lg || '', cl: ult?.cl || 'V5', pr: ult?.pr || 70, qr: '', pn: ult?.pn || 40, lm: ult?.lm || '', irc: ult?.irc || '>70', qn: '' });
+const tcLinhaExp = ult => ({ lg: ult?.lg || '', cl: ult?.cl || 'V5', pn: ult?.pn || 50, lm: ult?.lm || '', irc: ult?.irc || '>70', qn: '' });
 // só o que vai para o banco (sem linhas vazias)
 function tcParaGravar(t) {
   const vazia = r => !String(r.lg || '').trim() && !tcQ(r.qn) && !tcQ(r.qr);
@@ -107,36 +107,36 @@ function tcDesenha(pre) {
   const modRows = t.mod.map((r, i) => `<tr>
     <td>${inp('mod', i, 'lg', 'tc-lg', 'text')}</td><td>${sel('mod', i, 'cl', TC_CLASSES)}</td>
     <td class="tc-r g1">${sel('mod', i, 'pr', TC_POTS_RET, ' W')}</td><td class="num tc-r" data-perda="${i}"></td><td class="tc-r">${inp('mod', i, 'qr', 'tc-n')}</td><td class="num tc-r tc-calc" data-c="mod-r-${i}"></td>
-    <td class="tc-m g1">${sel('mod', i, 'pn', POTS, ' W')}</td><td class="tc-m">${inp('mod', i, 'lm', 'tc-n')}</td><td class="tc-m">${inp('mod', i, 'irc', 'tc-irc', 'text')}</td><td class="tc-m">${inp('mod', i, 'qn', 'tc-n')}</td><td class="tc-m">${inp('mod', i, 'br', 'tc-n')}</td><td class="num tc-m tc-calc" data-c="mod-m-${i}"></td>${rem('mod', i)}</tr>`).join('');
+    <td class="tc-m g1">${sel('mod', i, 'pn', POTS, ' W')}</td><td class="tc-m">${inp('mod', i, 'lm', 'tc-n')}</td><td class="tc-m">${inp('mod', i, 'irc', 'tc-irc', 'text')}</td><td class="tc-m">${inp('mod', i, 'qn', 'tc-n')}</td><td class="num tc-m tc-calc" data-c="mod-m-${i}"></td>${rem('mod', i)}</tr>`).join('');
   const novos = b => t[b].map((r, i) => `<tr>
     <td>${inp(b, i, 'lg', 'tc-lg', 'text')}</td><td>${sel(b, i, 'cl', TC_CLASSES)}</td>
-    <td>${sel(b, i, 'pn', POTS, ' W')}</td><td>${inp(b, i, 'lm', 'tc-n')}</td><td>${inp(b, i, 'irc', 'tc-irc', 'text')}</td><td>${inp(b, i, 'qn', 'tc-n')}</td><td>${inp(b, i, 'br', 'tc-n')}</td><td class="num tc-calc" data-c="${b}-${i}"></td>${rem(b, i)}</tr>`).join('');
+    <td>${sel(b, i, 'pn', POTS, ' W')}</td><td>${inp(b, i, 'lm', 'tc-n')}</td><td>${inp(b, i, 'irc', 'tc-irc', 'text')}</td><td>${inp(b, i, 'qn', 'tc-n')}</td><td class="num tc-calc" data-c="${b}-${i}"></td>${rem(b, i)}</tr>`).join('');
   const expRows = novos('exp'), destRows = novos('dest');
   E.el.innerHTML = `
     <div class="tc-aviso" data-tc="aviso" hidden></div>
     <h3 class="tc-bloco">Modernização <span>troca de luminárias existentes</span></h3>
     <p class="tc-dica"><b>Perda</b> do reator automática pela potência retirada: 70 W 14 · 100 W 17 · 150 W 22 · 250 W 30 · 400 W 38 · 1000 W 58. As demais não têm perda.</p>
     <div class="tab-wrap"><table class="tc-t"><thead>
-      <tr class="tc-g"><th colspan="2"></th><th colspan="4" class="tc-r g1"><span>Padrão retirado</span></th><th colspan="6" class="tc-m g1"><span>Padrão modernizado</span></th><th></th></tr>
-      <tr><th>Logradouro</th><th>Classe</th><th class="tc-r g1">Potência</th><th class="num tc-r" title="Perda do reator, automática pela potência">Perda</th><th class="tc-r">Qtd</th><th class="num tc-r">Total</th><th class="tc-m g1">Potência</th><th class="tc-m">Lm/W</th><th class="tc-m">IRC</th><th class="tc-m">Qtd</th><th class="tc-m">Braço (m)</th><th class="num tc-m">Total</th><th></th></tr></thead>
-      <tbody>${modRows || '<tr><td colspan="13" class="vazio">Sem linhas de modernização.</td></tr>'}</tbody>
-      <tfoot><tr><td colspan="2">Total</td><td class="tc-r g1"></td><td class="tc-r"></td><td class="num tc-r" data-c="qR"></td><td class="num tc-r" data-c="pR"></td><td class="tc-m g1"></td><td class="tc-m"></td><td class="tc-m"></td><td class="num tc-m" data-c="qM"></td><td class="tc-m"></td><td class="num tc-m" data-c="pM"></td><td></td></tr></tfoot></table></div>
+      <tr class="tc-g"><th colspan="2"></th><th colspan="4" class="tc-r g1"><span>Padrão retirado</span></th><th colspan="5" class="tc-m g1"><span>Padrão modernizado</span></th><th></th></tr>
+      <tr><th>Logradouro</th><th>Classe</th><th class="tc-r g1">Potência</th><th class="num tc-r" title="Perda do reator, automática pela potência">Perda</th><th class="tc-r">Qtd</th><th class="num tc-r">Total</th><th class="tc-m g1">Potência</th><th class="tc-m">Lm/W</th><th class="tc-m">IRC</th><th class="tc-m">Qtd</th><th class="num tc-m">Total</th><th></th></tr></thead>
+      <tbody>${modRows || '<tr><td colspan="12" class="vazio">Sem linhas de modernização.</td></tr>'}</tbody>
+      <tfoot><tr><td colspan="2">Total</td><td class="tc-r g1"></td><td class="tc-r"></td><td class="num tc-r" data-c="qR"></td><td class="num tc-r" data-c="pR"></td><td class="tc-m g1"></td><td class="tc-m"></td><td class="tc-m"></td><td class="num tc-m" data-c="qM"></td><td class="num tc-m" data-c="pM"></td><td></td></tr></tfoot></table></div>
     <div class="total"><button type="button" class="btn peq" data-add="mod">+ Linha de modernização</button><div class="tc-red" data-c="red"></div></div>
     <h3 class="tc-bloco">Expansão <span>pontos novos (crescimento vegetativo)</span></h3>
-    <div class="tab-wrap"><table class="tc-t"><thead><tr><th>Logradouro</th><th>Classe</th><th>Potência</th><th>Lm/W</th><th>IRC</th><th>Qtd</th><th>Braço (m)</th><th class="num">Total</th><th></th></tr></thead>
-      <tbody>${expRows || '<tr><td colspan="9" class="vazio">Sem linhas de expansão.</td></tr>'}</tbody>
-      <tfoot><tr><td colspan="5">Total</td><td class="num" data-c="qE"></td><td></td><td class="num" data-c="pE"></td><td></td></tr></tfoot></table></div>
+    <div class="tab-wrap"><table class="tc-t"><thead><tr><th>Logradouro</th><th>Classe</th><th>Potência</th><th>Lm/W</th><th>IRC</th><th>Qtd</th><th class="num">Total</th><th></th></tr></thead>
+      <tbody>${expRows || '<tr><td colspan="8" class="vazio">Sem linhas de expansão.</td></tr>'}</tbody>
+      <tfoot><tr><td colspan="5">Total</td><td class="num" data-c="qE"></td><td class="num" data-c="pE"></td><td></td></tr></tfoot></table></div>
     <div class="total"><button type="button" class="btn peq" data-add="exp">+ Linha de expansão</button></div>
     <h3 class="tc-bloco">Iluminação de destaque <span>praças, monumentos, fachadas · conta como destaque</span></h3>
-    <div class="tab-wrap"><table class="tc-t"><thead><tr><th>Logradouro</th><th>Classe</th><th>Potência</th><th>Lm/W</th><th>IRC</th><th>Qtd</th><th>Braço (m)</th><th class="num">Total</th><th></th></tr></thead>
-      <tbody>${destRows || '<tr><td colspan="9" class="vazio">Sem linhas de destaque.</td></tr>'}</tbody>
-      <tfoot><tr><td colspan="5">Total</td><td class="num" data-c="qD"></td><td></td><td class="num" data-c="pD"></td><td></td></tr></tfoot></table></div>
+    <div class="tab-wrap"><table class="tc-t"><thead><tr><th>Logradouro</th><th>Classe</th><th>Potência</th><th>Lm/W</th><th>IRC</th><th>Qtd</th><th class="num">Total</th><th></th></tr></thead>
+      <tbody>${destRows || '<tr><td colspan="8" class="vazio">Sem linhas de destaque.</td></tr>'}</tbody>
+      <tfoot><tr><td colspan="5">Total</td><td class="num" data-c="qD"></td><td class="num" data-c="pD"></td><td></td></tr></tfoot></table></div>
     <div class="total"><button type="button" class="btn peq" data-add="dest">+ Linha de destaque</button></div>
     <div class="tc-duas"><div><h3 class="tc-bloco">Materiais utilizados <span>calculados · dá para corrigir</span></h3><div data-tc="mat"></div></div>
       <div><h3 class="tc-bloco">Vai para o processo <span>preenchido pela tabela</span></h3><div class="tc-resumo" data-tc="resumo"></div></div></div>`;
   E.el.querySelectorAll('.tc-i').forEach(x => {
     const ev = x.tagName === 'SELECT' ? 'change' : 'input';
-    x.addEventListener(ev, () => { const r = t[x.dataset.b][+x.dataset.i], k = x.dataset.k; r[k] = ['pr', 'qr', 'pn', 'lm', 'qn', 'br'].includes(k) && x.value !== '' && !isNaN(+x.value) ? +x.value : x.value; tcAtualiza(pre); });
+    x.addEventListener(ev, () => { const r = t[x.dataset.b][+x.dataset.i], k = x.dataset.k; r[k] = ['pr', 'qr', 'pn', 'lm', 'qn'].includes(k) && x.value !== '' && !isNaN(+x.value) ? +x.value : x.value; tcAtualiza(pre); });
   });
   E.el.querySelectorAll('[data-rem]').forEach(b => b.onclick = () => { t[b.dataset.rem].splice(+b.dataset.i, 1); tcDesenha(pre); });
   E.el.querySelectorAll('[data-add]').forEach(b => b.onclick = () => {
@@ -323,17 +323,16 @@ async function gerarTabelaCarga(p, t, o = {}) {
     cols.forEach((k, j) => { const v = totais[j]; if (v != null) txt(v, x + 4, y - 11.5, { f: FB, sz: 8, cor: BR, al: j === 0 ? 'l' : k.al || 'l', w: k.w - 8 }); x += k.w; });
     y -= rh + 22;
   };
-  const brc = r => tcQ(r.br) ? String(r.br).replace('.', ',') : '—';
   if (temMod) tabela('Modernização', 'troca de luminárias existentes', [
     { t: 'LOGRADOURO', w: 0, v: r => r.lg }, { t: 'CLASSE', w: 42, al: 'c', v: r => r.cl },
     { t: 'POTÊNCIA\n(W)', w: 52, al: 'r', g: 'r', v: r => n(r.pr) }, { t: 'PERDA\nREATOR (W)', w: 54, al: 'r', g: 'r', v: r => n(tcPerda(tcQ(r.pr))) }, { t: 'QTD', w: 38, al: 'r', g: 'r', v: r => n(r.qr) }, { t: 'TOTAL\n(W)', w: 60, al: 'r', g: 'r', calc: 1, v: r => n(tcQ(r.qr) * (tcQ(r.pr) + tcPerda(tcQ(r.pr)))) },
-    { t: 'POTÊNCIA\n(W)', w: 52, al: 'r', g: 'i', v: r => n(r.pn) }, { t: 'LM/W', w: 44, al: 'r', g: 'i', v: r => r.lm || '—' }, { t: 'IRC', w: 40, al: 'c', g: 'i', v: r => r.irc || '—' }, { t: 'QTD', w: 38, al: 'r', g: 'i', v: r => n(r.qn) }, { t: 'BRAÇO\n(M)', w: 44, al: 'r', g: 'i', v: brc }, { t: 'TOTAL\n(W)', w: 86, al: 'r', g: 'i', calc: 1, v: r => n(tcQ(r.qn) * tcQ(r.pn)) }],
-    t.mod, ['TOTAL', null, null, null, n(T.qR), n(T.pR), null, null, null, n(T.qM), null, n(T.pM)]);
+    { t: 'POTÊNCIA\n(W)', w: 52, al: 'r', g: 'i', v: r => n(r.pn) }, { t: 'LM/W', w: 44, al: 'r', g: 'i', v: r => r.lm || '—' }, { t: 'IRC', w: 40, al: 'c', g: 'i', v: r => r.irc || '—' }, { t: 'QTD', w: 38, al: 'r', g: 'i', v: r => n(r.qn) }, { t: 'TOTAL\n(W)', w: 86, al: 'r', g: 'i', calc: 1, v: r => n(tcQ(r.qn) * tcQ(r.pn)) }],
+    t.mod, ['TOTAL', null, null, null, n(T.qR), n(T.pR), null, null, null, n(T.qM), n(T.pM)]);
   const colsNovos = () => [
     { t: 'LOGRADOURO', w: 0, v: r => r.lg }, { t: 'CLASSE', w: 42, al: 'c', v: r => r.cl },
-    { t: 'POTÊNCIA\n(W)', w: 52, al: 'r', v: r => n(r.pn) }, { t: 'LM/W', w: 44, al: 'r', v: r => r.lm || '—' }, { t: 'IRC', w: 40, al: 'c', v: r => r.irc || '—' }, { t: 'QTD', w: 38, al: 'r', v: r => n(r.qn) }, { t: 'BRAÇO\n(M)', w: 44, al: 'r', v: brc }, { t: 'TOTAL\n(W)', w: 86, al: 'r', calc: 1, v: r => n(tcQ(r.qn) * tcQ(r.pn)) }];
-  if (temExp) tabela('Crescimento vegetativo', 'pontos novos', colsNovos(), t.exp, ['TOTAL', null, null, null, null, n(T.qE), null, n(T.pE)]);
-  if (temDest) tabela('Iluminação de destaque', 'pontos de destaque', colsNovos(), t.dest, ['TOTAL', null, null, null, null, n(T.qD), null, n(T.pD)]);
+    { t: 'POTÊNCIA\n(W)', w: 52, al: 'r', v: r => n(r.pn) }, { t: 'LM/W', w: 44, al: 'r', v: r => r.lm || '—' }, { t: 'IRC', w: 40, al: 'c', v: r => r.irc || '—' }, { t: 'QTD', w: 38, al: 'r', v: r => n(r.qn) }, { t: 'TOTAL\n(W)', w: 86, al: 'r', calc: 1, v: r => n(tcQ(r.qn) * tcQ(r.pn)) }];
+  if (temExp) tabela('Crescimento vegetativo', 'pontos novos', colsNovos(), t.exp, ['TOTAL', null, null, null, null, n(T.qE), n(T.pE)]);
+  if (temDest) tabela('Iluminação de destaque', 'pontos de destaque', colsNovos(), t.dest, ['TOTAL', null, null, null, null, n(T.qD), n(T.pD)]);
   // materiais (2 colunas) + luminárias por potência + assinatura
   const mat = tcMateriais(t), rh = 14, wm = 470, xr = M + wm + 24, wr = LW - wm - 24;
   const metade = Math.ceil(mat.length / 2), wc = (wm - 12) / 2, pots = Object.entries(T.pot).sort((a, b) => a[0] - b[0]);
@@ -382,7 +381,7 @@ function geraXlsxCarga(p, t, asbuilt) {
   const S = { tit: 1, sub: 2, faixa: 3, vias: 4, ret: 5, mod: 6, cab: 7, txt: 8, num: 9, totR: 10, totN: 11, redR: 12, redN: 13, pct: 14, matT: 15, neg: 16 };
   const put = (r, c, v, s, f) => { (cel[r] = cel[r] || {})[c] = { v, s, f }; };
   const junta = (r, c1, c2, v, s) => { for (let c = c1; c <= c2; c++) put(r, c, c === c1 ? v : null, s); if (c2 > c1) merges.push(colL(c1) + r + ':' + colL(c2) + r); };
-  const NC = 12;   // colunas A..M (0..12)
+  const NC = 11;   // colunas A..L (0..11)
   const altura = { 1: 30, 2: 20 };
   junta(1, 0, NC, 'PROJETO ' + p.numero.replace('/', '-') + (asbuilt ? ' - ASBUILT' : ''), S.tit);
   junta(2, 0, NC, [p.logradouro, p.bairro, p.zona ? 'ZONA ' + p.zona : ''].filter(Boolean).join(' - '), S.sub);
@@ -390,36 +389,36 @@ function geraXlsxCarga(p, t, asbuilt) {
   let r = 3;
   if (temMod) {
     altura[r] = 22; junta(r, 0, NC, 'TABELA DE CARGA - MODERNIZAÇÃO', S.faixa); r += 2;
-    junta(r, 0, 1, 'VIAS', S.vias); junta(r, 2, 6, 'PADRÃO RETIRADO', S.ret); junta(r, 7, 12, 'PADRÃO MODERNIZADO', S.mod); r++;
-    ['LOGRADOURO', 'CLASSE', 'POTÊNCIA (W)', 'PERDA (W)', 'POTÊNCIA RETIRADA (W)', 'QTD', 'POTÊNCIA TOTAL (W)', 'POTÊNCIA (W)', 'Lm/W', 'IRC', 'QTD', 'BRAÇO (M)', 'POTÊNCIA TOTAL (W)'].forEach((h, i) => put(r, i, h, S.cab)); altura[r] = 30; r++;
+    junta(r, 0, 1, 'VIAS', S.vias); junta(r, 2, 6, 'PADRÃO RETIRADO', S.ret); junta(r, 7, 11, 'PADRÃO MODERNIZADO', S.mod); r++;
+    ['LOGRADOURO', 'CLASSE', 'POTÊNCIA (W)', 'PERDA (W)', 'POTÊNCIA RETIRADA (W)', 'QTD', 'POTÊNCIA TOTAL (W)', 'POTÊNCIA (W)', 'Lm/W', 'IRC', 'QTD', 'POTÊNCIA TOTAL (W)'].forEach((h, i) => put(r, i, h, S.cab)); altura[r] = 30; r++;
     const r0 = r;
     t.mod.forEach(l => {
       const pr = tcQ(l.pr), pe = tcPerda(pr), qr = tcQ(l.qr), pn = tcQ(l.pn), qn = tcQ(l.qn);
       put(r, 0, l.lg || '', S.txt); put(r, 1, l.cl || '', S.num); put(r, 2, pr, S.num); put(r, 3, pe, S.num); put(r, 4, pr + pe, S.num, `C${r}+D${r}`); put(r, 5, qr, S.num); put(r, 6, qr * (pr + pe), S.num, `F${r}*E${r}`);
-      put(r, 7, pn, S.num); put(r, 8, l.lm === '' || l.lm == null ? null : (isNaN(+l.lm) ? l.lm : +l.lm), S.num); put(r, 9, l.irc || '', S.num); put(r, 10, qn, S.num); put(r, 11, tcQ(l.br) || null, S.num); put(r, 12, qn * pn, S.num, `H${r}*K${r}`); r++;
+      put(r, 7, pn, S.num); put(r, 8, l.lm === '' || l.lm == null ? null : (isNaN(+l.lm) ? l.lm : +l.lm), S.num); put(r, 9, l.irc || '', S.num); put(r, 10, qn, S.num); put(r, 11, qn * pn, S.num, `H${r}*K${r}`); r++;
     });
     if (r === r0) { for (let c = 0; c <= NC; c++) put(r, c, null, c ? S.num : S.txt); r++; }
     const ru = r - 1; r++;
     junta(r, 0, 4, 'QUANTIDADE RETIRADA', S.totR); put(r, 5, T.qR, S.totN, `SUM(F${r0}:F${ru})`); put(r, 6, null, S.totN);
-    junta(r, 7, 9, 'QUANTIDADE INSTALADA', S.totR); put(r, 10, T.qM, S.totN, `SUM(K${r0}:K${ru})`); junta(r, 11, 12, null, S.totN); r++;
+    junta(r, 7, 9, 'QUANTIDADE INSTALADA', S.totR); put(r, 10, T.qM, S.totN, `SUM(K${r0}:K${ru})`); put(r, 11, null, S.totN); r++;
     const rp = r;
     junta(r, 0, 5, 'POTÊNCIA TOTAL (W)', S.totR); put(r, 6, T.pR, S.totN, `SUM(G${r0}:G${ru})`);
-    junta(r, 7, 11, 'POTÊNCIA TOTAL (W)', S.totR); put(r, 12, T.pM, S.totN, `SUM(M${r0}:M${ru})`); r += 2;
-    junta(r, 8, 11, 'POTÊNCIA REDUZIDA (W):', S.redR); put(r, 12, T.red, S.redN, `G${rp}-M${rp}`); r++;
-    junta(r, 8, 11, 'PERCENTUAL REDUZIDO:', S.redR); put(r, 12, T.pct, S.pct, `IF(G${rp}=0,0,M${r - 1}/G${rp})`); r += 2;
+    junta(r, 7, 10, 'POTÊNCIA TOTAL (W)', S.totR); put(r, 11, T.pM, S.totN, `SUM(L${r0}:L${ru})`); r += 2;
+    junta(r, 7, 10, 'POTÊNCIA REDUZIDA (W):', S.redR); put(r, 11, T.red, S.redN, `G${rp}-L${rp}`); r++;
+    junta(r, 7, 10, 'PERCENTUAL REDUZIDO:', S.redR); put(r, 11, T.pct, S.pct, `IF(G${rp}=0,0,L${r - 1}/G${rp})`); r += 2;
   }
   [['exp', 'CRESCIMENTO VEGETATIVO', T.qE, T.pE], ['dest', 'ILUMINAÇÃO DE DESTAQUE', T.qD, T.pD]].forEach(([bl, nomeBl, qB, pB]) => {   // pontos novos (mesmas colunas do padrão modernizado)
     if (!t[bl].length) return;
     altura[r] = 22; junta(r, 0, NC, 'TABELA DE CARGA - ' + nomeBl, S.faixa); r++;
-    junta(r, 0, 5, 'LOGRADOURO', S.cab); ['CLASSE', 'POTÊNCIA (W)', 'Lm/W', 'IRC', 'QTD', 'BRAÇO (M)', 'POTÊNCIA TOTAL (W)'].forEach((h, i) => put(r, 6 + i, h, S.cab)); altura[r] = 30; r++;
+    junta(r, 0, 5, 'LOGRADOURO', S.cab); ['CLASSE', 'POTÊNCIA (W)', 'Lm/W', 'IRC', 'QTD', 'POTÊNCIA TOTAL (W)'].forEach((h, i) => put(r, 6 + i, h, S.cab)); altura[r] = 30; r++;
     const e0 = r;
     t[bl].forEach(l => {
       const pn = tcQ(l.pn), qn = tcQ(l.qn);
-      junta(r, 0, 5, l.lg || '', S.txt); put(r, 6, l.cl || '', S.num); put(r, 7, pn, S.num); put(r, 8, l.lm === '' || l.lm == null ? null : (isNaN(+l.lm) ? l.lm : +l.lm), S.num); put(r, 9, l.irc || '', S.num); put(r, 10, qn, S.num); put(r, 11, tcQ(l.br) || null, S.num); put(r, 12, qn * pn, S.num, `H${r}*K${r}`); r++;
+      junta(r, 0, 5, l.lg || '', S.txt); put(r, 6, l.cl || '', S.num); put(r, 7, pn, S.num); put(r, 8, l.lm === '' || l.lm == null ? null : (isNaN(+l.lm) ? l.lm : +l.lm), S.num); put(r, 9, l.irc || '', S.num); put(r, 10, qn, S.num); put(r, 11, qn * pn, S.num, `H${r}*K${r}`); r++;
     });
     const eu = r - 1;
-    junta(r, 0, 9, 'QUANTIDADE INSTALADA', S.totR); put(r, 10, qB, S.totN, `SUM(K${e0}:K${eu})`); junta(r, 11, 12, null, S.totN); r++;
-    junta(r, 0, 11, 'POTÊNCIA TOTAL (W)', S.totR); put(r, 12, pB, S.totN, `SUM(M${e0}:M${eu})`); r += 2;
+    junta(r, 0, 9, 'QUANTIDADE INSTALADA', S.totR); put(r, 10, qB, S.totN, `SUM(K${e0}:K${eu})`); put(r, 11, null, S.totN); r++;
+    junta(r, 0, 10, 'POTÊNCIA TOTAL (W)', S.totR); put(r, 11, pB, S.totN, `SUM(L${e0}:L${eu})`); r += 2;
   });
   // materiais
   junta(r, 0, 3, 'TABELA DE MATERIAIS UTILIZADOS', S.matT); r++;
@@ -434,7 +433,7 @@ function geraXlsxCarga(p, t, asbuilt) {
     return `<c r="${ref}" t="inlineStr"${st}><is><t xml:space="preserve">${xEsc(x.v)}</t></is></c>`;
   };
   const rows = Object.keys(cel).map(Number).sort((a, b) => a - b).map(rr => `<row r="${rr}"${altura[rr] ? ` ht="${altura[rr]}" customHeight="1"` : ''}>${Object.keys(cel[rr]).map(Number).sort((a, b) => a - b).map(c => cell(rr, c, cel[rr][c])).join('')}</row>`).join('');
-  const larg = [40, 8, 11, 9, 12, 7, 12, 11, 8, 7, 7, 9, 12];
+  const larg = [40, 8, 11, 9, 12, 7, 12, 11, 8, 7, 7, 12];
   const nome = asbuilt ? 'ASBUILT' : 'TABELA DE CARGA';
   const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><sheetViews><sheetView workbookViewId="0" showGridLines="0"/></sheetViews><cols>${larg.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('')}</cols><sheetData>${rows}</sheetData><mergeCells count="${merges.length}">${merges.map(m => `<mergeCell ref="${m}"/>`).join('')}</mergeCells><pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/></worksheet>`;
   const b = '<border><left style="thin"><color rgb="FF000000"/></left><right style="thin"><color rgb="FF000000"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border>';
