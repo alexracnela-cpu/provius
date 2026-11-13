@@ -22,7 +22,7 @@ const ETAPAS = {
   5: { setor: 'Projetos', nome: 'Pronto p/ AGEMAN', aba: 'ag', curto: 'AGEMAN' },
   6: { setor: 'AGEMAN', nome: 'Enviado', aba: null, curto: 'AGEMAN' }
 };
-const POTS = [12, 15, 18, 20, 22, 30, 32, 35, 36, 37, 40, 45, 46, 47, 50, 58, 60, 70, 80, 90, 96, 100, 105, 115, 117, 120, 145, 150, 160, 175, 200, 220, 240, 250, 400];
+const POTS = [12, 15, 18, 20, 22, 30, 32, 35, 36, 37, 40, 45, 46, 47, 50, 58, 60, 70, 80, 90, 96, 100, 105, 115, 117, 120, 145, 150, 160, 175, 185, 200, 220, 240, 250, 400];
 
 let EU = null;            // perfil de quem está usando
 let BAIRROS = {};         // nome -> zona
