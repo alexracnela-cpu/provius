@@ -27,6 +27,13 @@ const mvY = lat => { const s = Math.sin(Math.max(-85, Math.min(85, lat)) * Math.
 const mvLon = x => x / 256 * 360 - 180;
 const mvLat = y => { const n = Math.PI - 2 * Math.PI * y / 256; return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n))); };
 const MV_CENTRO = [-60.01, -3.06];   // Manaus
+// fundo do mapa: ruas (OpenStreetMap) ou satélite (imagens Esri + nomes das ruas por cima)
+const MV_FUNDOS = {
+  ruas: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+  sat: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}']
+};
+const MV_ATRIB = { ruas: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>', sat: 'Imagens © Esri, Maxar, Earthstar Geographics · ruas © Esri' };
+let MV_FUNDO = 'ruas'; try { if (localStorage.getItem('provius-mapa-fundo') === 'sat') MV_FUNDO = 'sat'; } catch (e) { }
 
 // feição: { id, tipo 'L' linha | 'P' área | 'T' ponto, xy: [x0,y0,x1,y1,…] no mundo, b: [minx,miny,maxx,maxy], est }
 function mvFeicao(id, tipo, coords, est, ref) {
@@ -39,10 +46,12 @@ function mvDistSeg(px, py, ax, ay, bx, by) { const dx = bx - ax, dy = by - ay, l
 
 // ---------- motor do mapa ----------
 // op: { aoClicar(f, ll), rotulo(f) -> texto do balão, fixo (sem arrastar/zoom), aoEditar() }
+const MV_MAPAS = new Set();   // todos os mapas abertos trocam de fundo juntos
+function mvFundoTodos() { MV_MAPAS.forEach(f => f(MV_FUNDO)); }
 function mvCriar(box, op = {}) {
-  box.classList.add('mv'); box.innerHTML = '<div class="mv-tiles"></div><canvas class="mv-cv"></canvas>' + (op.fixo ? '' : '<div class="mv-zoom"><button type="button" data-z="1" aria-label="Aproximar">+</button><button type="button" data-z="-1" aria-label="Afastar">−</button></div>') + '<div class="mv-attr">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></div><div class="mv-balao" hidden></div>';
+  box.classList.add('mv'); box.innerHTML = '<div class="mv-tiles"></div><canvas class="mv-cv"></canvas>' + (op.fixo ? '' : '<div class="mv-zoom"><button type="button" data-z="1" aria-label="Aproximar">+</button><button type="button" data-z="-1" aria-label="Afastar">−</button></div><div class="mv-fundo" role="group" aria-label="Fundo do mapa"><button type="button" data-f="ruas">Ruas</button><button type="button" data-f="sat">Satélite</button></div>') + '<div class="mv-attr"></div><div class="mv-balao" hidden></div>';
   const tl = box.querySelector('.mv-tiles'), cv = box.querySelector('canvas'), ctx = cv.getContext('2d'), balao = box.querySelector('.mv-balao');
-  const M = { cx: mvX(MV_CENTRO[0]), cy: mvY(MV_CENTRO[1]), z: 12, f: [], est: {}, ordem: [], vis: null, sel: new Set(), hov: null, ed: null, mouse: null };
+  const M = { fundo: MV_FUNDO, cx: mvX(MV_CENTRO[0]), cy: mvY(MV_CENTRO[1]), z: 12, f: [], est: {}, ordem: [], vis: null, sel: new Set(), hov: null, ed: null, mouse: null };
   const pool = new Map(); let raf = 0, limpaT = 0, W = 0, H = 0, dpr = 1;
   const S = () => 2 ** M.z;
   const tela = (x, y) => [(x - M.cx) * S() + W / 2, (y - M.cy) * S() + H / 2];
@@ -50,15 +59,18 @@ function mvCriar(box, op = {}) {
   const pede = () => { if (!raf) raf = requestAnimationFrame(desenha); };
 
   function fundo() {
-    const tz = Math.max(0, Math.min(19, Math.round(M.z))), n = 2 ** tz, uw = 256 / n, [xa, ya] = mundo(0, 0), [xb, yb] = mundo(W, H), vivos = new Set();
-    for (let tx = Math.floor(xa / uw); tx <= Math.floor(xb / uw); tx++) for (let ty = Math.max(0, Math.floor(ya / uw)); ty <= Math.min(n - 1, Math.floor(yb / uw)); ty++) {
-      const k = tz + '/' + tx + '/' + ty; vivos.add(k); if (pool.has(k)) continue;
-      const im = new Image(); im.alt = ''; im.draggable = false; im.decoding = 'async'; im._t = [tz, tx, ty];
-      im.onload = () => im.classList.add('ok'); im.onerror = () => im.classList.add('erro');
-      im.src = `https://tile.openstreetmap.org/${tz}/${((tx % n) + n) % n}/${ty}.png`; pool.set(k, im); tl.appendChild(im);
-    }
-    pool.forEach((im, k) => { const [tz2, tx, ty] = im._t, uw2 = 256 / 2 ** tz2, [sx, sy] = tela(tx * uw2, ty * uw2), ts = uw2 * S();
-      im.style.transform = `translate(${sx.toFixed(1)}px,${sy.toFixed(1)}px)`; im.style.width = im.style.height = (ts + .6).toFixed(1) + 'px'; im.style.zIndex = tz2 === tz ? 2 : 1; im._vivo = vivos.has(k); });
+    const tz = Math.max(0, Math.min(19, Math.round(M.z))), n = 2 ** tz, uw = 256 / n, [xa, ya] = mundo(0, 0), [xb, yb] = mundo(W, H), vivos = new Set(), cams = MV_FUNDOS[M.fundo];
+    cams.forEach((url, ci) => {
+      for (let tx = Math.floor(xa / uw); tx <= Math.floor(xb / uw); tx++) for (let ty = Math.max(0, Math.floor(ya / uw)); ty <= Math.min(n - 1, Math.floor(yb / uw)); ty++) {
+        const k = M.fundo + ci + '/' + tz + '/' + tx + '/' + ty; vivos.add(k); if (pool.has(k)) continue;
+        const im = new Image(); im.alt = ''; im.draggable = false; im.decoding = 'async'; im._t = [tz, tx, ty, ci];
+        im.onload = () => im.classList.add('ok'); im.onerror = () => im.classList.add('erro');
+        im.src = url.replace('{z}', tz).replace('{x}', ((tx % n) + n) % n).replace('{y}', ty); pool.set(k, im); tl.appendChild(im);
+      }
+    });
+    pool.forEach((im, k) => { const [tz2, tx, ty, ci] = im._t, uw2 = 256 / 2 ** tz2, [sx, sy] = tela(tx * uw2, ty * uw2), ts = uw2 * S(), vivo = vivos.has(k);
+      im.style.transform = `translate(${sx.toFixed(1)}px,${sy.toFixed(1)}px)`; im.style.width = im.style.height = (ts + .6).toFixed(1) + 'px';
+      im.style.zIndex = (k.startsWith(M.fundo) ? 10 : 0) + ci * 4 + (tz2 === tz ? 2 : 1); im.style.opacity = k.startsWith(M.fundo) ? '' : 0; im._vivo = vivo; });
     clearTimeout(limpaT); limpaT = setTimeout(() => pool.forEach((im, k) => { if (!im._vivo) { im.remove(); pool.delete(k); } }), 900);
   }
   function caminho(f, x0, y0, s) {
@@ -184,7 +196,10 @@ function mvCriar(box, op = {}) {
     cv.addEventListener('dblclick', e => { e.preventDefault(); const [px, py] = pos(e); if (M.ed) { if (M.ed.novo) edConcluir(); return; } zoomSuave(Math.round(M.z) + 1, px, py); });
     cv.addEventListener('contextmenu', e => { e.preventDefault(); if (!M.ed) return; const [px, py] = pos(e), v = edVertice(px, py); if (v) { M.ed.linhas[v.li].pts.splice(v.pi, 1); if (M.ed.linhas[v.li].pts.length < (M.ed.linhas[v.li].tipo === 'P' ? 3 : 2) && !(M.ed.novo && v.li === M.ed.at)) { M.ed.linhas.splice(v.li, 1); M.ed.at = -1; M.ed.novo = false; } pede(); op.aoEditar?.(); } });
     box.querySelectorAll('.mv-zoom button').forEach(b => b.onclick = () => zoomSuave(Math.round(M.z) + +b.dataset.z));
+    box.querySelectorAll('.mv-fundo button').forEach(b => b.onclick = () => { MV_FUNDO = b.dataset.f; try { localStorage.setItem('provius-mapa-fundo', MV_FUNDO); } catch (e) { } mvFundoTodos(); });
   }
+  function poeFundo(f) { M.fundo = f; box.classList.toggle('mv-sat', f === 'sat'); box.querySelector('.mv-attr').innerHTML = MV_ATRIB[f]; box.querySelectorAll('.mv-fundo button').forEach(b => b.setAttribute('aria-pressed', b.dataset.f === f)); pede(); }
+  poeFundo(M.fundo); MV_MAPAS.add(poeFundo);
   new ResizeObserver(pede).observe(box);
   const api = {
     set(fs) { M.f = fs; pede(); return api; },
