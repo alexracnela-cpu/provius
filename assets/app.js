@@ -2,7 +2,7 @@
 let TELA = 'todos';
 const TELAS = {
   todos: { abrir: todosAbrir }, pedido: { abrir: pedidoAbrir, setor: 'Engenharia' }, projetos: { abrir: projetosAbrir, setor: 'Projetos' },
-  exe: { abrir: execAbrir, setor: 'Engenharia' }, cad: { abrir: cadAbrir, setor: 'Cadastro' }, asb: { abrir: asbAbrir, setor: 'Projetos' }, ag: { abrir: agAbrir, setor: 'Projetos' }, hist: { abrir: histAbrir }, saldo: { abrir: saldoAbrir, gerencia: true }, usuarios: { abrir: usuariosAbrir, admin: true }, banco: { abrir: bancoAbrir, admin: true }
+  exe: { abrir: execAbrir, setor: 'Engenharia' }, cad: { abrir: cadAbrir, setor: 'Cadastro' }, asb: { abrir: asbAbrir, setor: 'Projetos' }, ag: { abrir: agAbrir, setor: 'Projetos' }, hist: { abrir: histAbrir }, mapa: { abrir: mapaAbrir }, saldo: { abrir: saldoAbrir, gerencia: true }, usuarios: { abrir: usuariosAbrir, admin: true }, banco: { abrir: bancoAbrir, admin: true }
 };
 const pode = t => { const x = TELAS[t]; if (!x || !EU) return false; if (x.admin) return EU.admin; if (x.gerencia) return EU.admin || EU.setor === 'Gerência'; /* Saldo de Itens: só administrador e gerência */ return !x.setor || EU.admin || EU.setor === x.setor; };
 
@@ -181,6 +181,7 @@ async function detalhe(id) {
     $('#det-corpo .det-sec').appendChild(box);
     box.querySelectorAll('[data-tcd]').forEach(b => b.onclick = () => { const x = tcs[+b.dataset.tcd]; tcPdfAbrir(p, x[0], x[1], x[1] ? p.tabela_carga : null); });
   }
+  const vm = document.createElement('div'); vm.className = 'det-mapa'; vm.innerHTML = '<button type="button" class="btn peq">🗺 Ver no mapa</button>'; vm.querySelector('button').onclick = () => mapaIrPara(p.id); $('#det-corpo').prepend(vm);   // traçado do projeto na aba Mapa
   const bt = $('#det-abrir'); const aba = !p.cancelado && p.etapa < 6 ? ETAPAS[p.etapa].aba : null;
   if (p.cancelado && (EU.admin || EU.setor === 'Projetos')) { bt.hidden = false; bt.textContent = 'Reativar processo'; bt.onclick = async () => { const r = await tarefa(() => rpc('reativar', { p_id: p.id }).then(() => true), 'Processo reativado'); if (r) { fechaModal('#modal-det'); await recarregar(); } }; }
   else if (aba && pode(aba)) { bt.hidden = false; bt.textContent = 'Abrir na fila de ' + ETAPAS[p.etapa].setor + ' →'; bt.onclick = () => { fechaModal('#modal-det'); TELA = aba; abrirTela(aba); const f = { projetos: projetosAbrir, exe: execAbrir, cad: cadAbrir, asb: asbAbrir }[aba]; if (f && p.etapa < 5) f(p.id); }; }

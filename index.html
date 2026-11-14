@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap">
-<link rel="stylesheet" href="assets/estilo.css?v=12">
+<link rel="stylesheet" href="assets/estilo.css?v=13">
 <link rel="stylesheet" href="assets/natal.css?v=3">
 <script>try{var t=localStorage.getItem('provius-tema');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 </head>
@@ -65,6 +65,7 @@
         <button class="aba passo" role="tab" data-tela="ag" data-setor="Projetos" title="6 · Entrega para a AGEMAN"><b>6</b>AGEMAN<span class="fila-n" data-etapas="5"></span></button>
       </div>
       <span class="divisor" aria-hidden="true"></span>
+      <button class="aba ico" role="tab" data-tela="mapa" title="Mapa dos projetos" aria-label="Mapa dos projetos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></svg></button>
       <button class="aba ico" role="tab" data-tela="hist" title="Histórico" aria-label="Histórico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></button>
       <button class="aba ico" role="tab" data-tela="saldo" title="Saldo de Itens" aria-label="Saldo de Itens"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M7 16V10M12 16V5M17 16v-4"/></svg><span class="sd-badge" id="sd-badge" hidden></span></button>
       <details class="menu" id="menu-adm">
@@ -112,6 +113,32 @@
       </div>
       <div class="cards-lista" id="lista"></div>
       <div class="pag"><span id="pag-info"></span><span style="display:flex;gap:8px"><button type="button" class="btn peq" id="pag-ant">← Anterior</button><button type="button" class="btn peq" id="pag-prox">Próxima →</button></span></div>
+    </div>
+  </div>
+</main>
+
+<!-- ===== MAPA DOS PROJETOS ===== -->
+<main class="pagina sem-lado mp-pag" id="tela-mapa" hidden>
+  <div style="min-width:0">
+    <div class="cab"><div><div class="etapa">Ruas e áreas de cada projeto</div><h1>Mapa dos projetos</h1><p class="sub">Cada cor é a situação do processo no Provius. Clique numa rua para ver o projeto. Só o Setor de Projetos desenha ou corrige o traçado.</p></div>
+      <button type="button" class="btn" id="mp-recarregar">↻ Atualizar</button></div>
+    <p class="faixa-dev" id="mp-vazio" hidden></p>
+    <div class="mp-grade">
+      <aside class="mp-lado">
+        <label class="busca mp-busca">Buscar<input type="search" id="mp-busca" placeholder="nº, logradouro ou bairro" autocomplete="off"></label>
+        <div class="mp-res" id="mp-res" hidden></div>
+        <section class="mp-sel" id="mp-sel" hidden></section>
+        <div class="mp-bloco"><h4>Situação</h4><div class="mp-leg" id="mp-leg"></div></div>
+        <div class="mp-bloco mp-filtros">
+          <label>Camada<select id="mp-f-cam"></select></label>
+          <label>Ano<select id="mp-f-ano"></select></label>
+          <label>Tipo<select id="mp-f-tipo"><option value="*">Todos</option><option value="">Comum</option><option value="C">Campo / Quadra (C-)</option><option value="R">Reequilíbrio (R-)</option><option value="RM">Remodelamento (RM-)</option><option value="V">Locais violentos (V-)</option><option value="MP">Manutenção preventiva (MP-)</option></select></label>
+        </div>
+        <p class="ajuda mp-resumo" id="mp-resumo"></p>
+        <div class="mp-bloco"><h4>Conferência do mapa</h4><div class="mp-conf" id="mp-conf"></div></div>
+        <div class="mp-bloco" id="mp-adm" hidden><h4>Administrador</h4><button type="button" class="btn peq" id="mp-importar">Importar KML do Google…</button><input type="file" id="mp-kml" accept=".kml,application/vnd.google-earth.kml+xml" hidden><p class="ajuda" style="margin:6px 0 0">Traz as ruas do mapa antigo e liga cada uma ao processo pelo número. Substitui só o que veio do Google antes.</p></div>
+      </aside>
+      <div class="mp-mapa-wrap"><div class="mp-mapa" id="mp-mapa"></div><button type="button" class="btn peq mp-tudo" id="mp-tudo" title="Mostrar todos os traços filtrados">⤢ Ver tudo</button></div>
     </div>
   </div>
 </main>
@@ -215,6 +242,8 @@
         <div class="it-avisos" id="j-avisos"></div>
         <div class="grade" id="j-just-c" hidden><div class="campo largo"><label class="r" for="j-just">Justificativa para usar item estourado <em>*</em></label><textarea id="j-just" placeholder="Explique por que o item será usado acima do contratado"></textarea><span class="ajuda">Fica registrada no histórico do processo.</span></div></div>
       </section>
+      <section class="secao mp-bl" id="j-sec-mapa" hidden><h2>Traçado no mapa <span style="text-transform:none;letter-spacing:0;font-family:var(--f-corpo);font-size:13px">aparece no mapa de todos os setores</span></h2>
+        <div class="mp-bl-in"><div class="mp-bl-mapa" id="j-mapa" hidden></div><div class="mp-bl-txt"><p class="ajuda" id="j-mapa-info" style="margin:0"></p><button type="button" class="btn peq pri" id="j-mapa-bt">✎ Desenhar no mapa</button></div></div></section>
       <section class="secao"><h2>Entrega do projeto</h2><div class="grade">
         <div class="campo largo"><span class="r">Projeto em PDF <em>*</em></span>
           <div class="upload" id="j-up"><span class="pdf-ico">PDF</span><span class="nome">Nenhum arquivo. Só PDF, até 10 MB.</span><label class="btn peq" for="j-arq">Escolher PDF</label><input type="file" id="j-arq" accept="application/pdf,.pdf" hidden></div>
@@ -309,6 +338,8 @@
         <div class="ed-area" id="v-area" style="max-height:640px"><div class="ed-pag" style="cursor:default"><canvas id="v-cv"></canvas></div></div>
       </section>
       <section class="secao"><h2>Histórico do processo</h2><ul class="hist" id="a-hist"></ul></section>
+      <section class="secao mp-bl" id="a-sec-mapa" hidden><h2>Traçado no mapa <span style="text-transform:none;letter-spacing:0;font-family:var(--f-corpo);font-size:13px">aparece no mapa de todos os setores</span></h2>
+        <div class="mp-bl-in"><div class="mp-bl-mapa" id="a-mapa" hidden></div><div class="mp-bl-txt"><p class="ajuda" id="a-mapa-info" style="margin:0"></p><button type="button" class="btn peq pri" id="a-mapa-bt">✎ Desenhar no mapa</button></div></div></section>
       <section class="secao"><h2>As built</h2><div class="grade">
         <div class="campo largo"><span class="r">PDF do as built atualizado <em>*</em></span>
           <div class="upload" id="a-up"><span class="pdf-ico">PDF</span><span class="nome">Projeto final com as correções e as plaquetas. Só PDF, até 10 MB.</span><label class="btn peq" for="a-arq">Escolher PDF</label><input type="file" id="a-arq" accept="application/pdf,.pdf" hidden></div>
@@ -435,6 +466,14 @@
 <!-- ===== JANELAS ===== -->
 <div class="fundo" id="modal-det" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="det-tit" style="width:min(720px,100%)"><h2 id="det-tit"></h2><div class="corpo" id="det-corpo"></div><div class="acoes"><button type="button" class="btn" data-fecha>Fechar</button><button type="button" class="btn pri" id="det-abrir" hidden></button></div></div></div>
 
+<div class="fundo" id="modal-mapa" hidden><div class="modal me-modal" role="dialog" aria-modal="true" aria-labelledby="me-tit"><h2 id="me-tit">Traçado no mapa</h2>
+  <div class="me-topo"><span class="ajuda" id="me-sub"></span>
+    <form id="f-me-busca" class="me-busca"><input type="search" id="me-busca" placeholder="Procurar endereço (só leva o mapa até lá)" aria-label="Procurar endereço"><button type="submit" class="btn peq">Ir</button></form><span id="me-res"></span></div>
+  <div class="me-barra"><button type="button" class="btn peq pri" id="me-linha">+ Linha</button><button type="button" class="btn peq" id="me-area">+ Área</button><button type="button" class="btn peq pri" id="me-fim" hidden>✓ Terminar</button><button type="button" class="btn peq" id="me-desf">↶ Desfazer ponto</button><button type="button" class="btn peq me-del" id="me-apagar">Apagar traço</button><span class="ajuda" id="me-n"></span></div>
+  <div class="me-mapa" id="me-mapa"></div>
+  <p class="ajuda me-dica" id="me-dica"></p>
+  <div class="acoes"><button type="button" class="btn" id="me-cancelar">Cancelar</button><button type="button" class="btn pri" id="me-salvar">Salvar traçado</button></div></div></div>
+
 <div class="fundo" id="modal-dev" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="dv-tit"><h2 id="dv-tit">Devolver</h2><div class="corpo">
   <div class="campo" id="dv-para-c"><label class="r" for="dv-para">Devolver para <em>*</em></label><select id="dv-para"></select></div>
   <div class="campo"><label class="r" for="dv-motivo">Motivo <em>*</em></label><select id="dv-motivo"><option value="">Selecione</option><option>Croqui incompleto</option><option>Medida ou posição divergente</option><option>Local não confere</option><option>Falta informação do pedido</option><option>Execução diferente do projeto</option><option>Faltam correções do campo</option><option>Plaqueta faltando ou errada</option><option>Outro</option></select></div>
@@ -499,11 +538,12 @@
 <script src="assets/documentos.js?v=4"></script>
 <script src="assets/itens.js?v=5"></script>
 <script src="assets/carga.js?v=10"></script>
-<script src="assets/telas.js?v=8"></script>
+<script src="assets/telas.js?v=9"></script>
 <script src="assets/banco.js?v=2"></script>
 <script src="assets/historico.js?v=1"></script>
 <script src="assets/ageman.js?v=4"></script>
-<script src="assets/app.js?v=9"></script>
+<script src="assets/mapa.js?v=1"></script>
+<script src="assets/app.js?v=10"></script>
 <script src="assets/natal.js?v=5"></script>
 </body>
 </html>

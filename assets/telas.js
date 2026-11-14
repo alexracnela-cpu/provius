@@ -174,6 +174,7 @@ async function projetosAbrir(idSel) {
   $('#j-ok').textContent = 'Entregar para Engenharia →';   // já executado ou não, o projeto sempre vai para a Engenharia
   await itensProjeto(p); if (seq !== PJ.seq) return;
   tcTela('j', p);   // depois dos itens: a tabela de carga decide se potências e modalidades aparecem
+  mapaBloco('j', p);   // traçado no mapa (antes do modo: o botão também fica travado em só leitura)
   projetosModo(trava);
 }
 // potências e modalidades: o mesmo editor serve à Tela 2 (pre 'j') e ao As built (pre 'a')
@@ -360,7 +361,7 @@ async function asbAbrir(idSel) {
   $('#a-arq-info').innerHTML = jaAsb ? `✓ Já enviado: <button type="button" class="link-pdf" id="a-ver-asb">${esc(jaAsb.nome)}</button> (${dataHora(jaAsb.em)}${jaAsb.por_nome ? ' por ' + esc(jaAsb.por_nome) : ''}). Escolha outro só se precisar mandar uma versão nova; o anterior fica no histórico.` : '';
   if (jaAsb) $('#a-ver-asb').onclick = () => verArquivo(jaAsb, 'As built ' + p.numero);
   $('#a-sec-pot').hidden = p.tipo === 'R';   // R- usa os itens de reequilíbrio, não potências
-  asbPotResumo(p); potPreenche(p, 'a'); asbPotEditar(false); tcTela('a', p);
+  asbPotResumo(p); potPreenche(p, 'a'); asbPotEditar(false); tcTela('a', p); mapaBloco('a', p);
   AB.visor.limpa(); $('#v-fonte').textContent = pl ? 'Carregando…' : 'Sem PDF de plaquetas neste processo.';
   if (pl) tarefa(async () => { await AB.visor.abrir(await bytesDe(pl.caminho), pl.nome); $('#v-fonte').textContent = pl.nome + ' · enviado por ' + (pl.por_nome || '') + ' em ' + dataHora(pl.em); });
 }
