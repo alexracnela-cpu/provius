@@ -674,10 +674,10 @@ td input[type=number]{width:100px;text-align:right;font-family:var(--f-num)}
 
 /* ===== Mapa dos projetos (14/11/2026) ===== */
 .mv{position:relative;overflow:hidden;background:#e7ebe6;touch-action:none;user-select:none;-webkit-user-select:none}
-.mv-tiles{position:absolute;inset:0}
+.mv-tiles{position:absolute;inset:0;z-index:0}   /* camada própria: o fundo nunca fica por cima dos traços e dos botões */
 .mv-tiles img{position:absolute;left:0;top:0;transform-origin:0 0;opacity:0;transition:opacity .25s;pointer-events:none;max-width:none}
 .mv-tiles img.ok{opacity:1}
-.mv-cv{position:absolute;inset:0;cursor:grab}
+.mv-cv{position:absolute;inset:0;cursor:grab;z-index:1}
 .mv-zoom{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;border:1px solid var(--linha);border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.18);z-index:3}
 .mv-zoom button{width:34px;height:34px;border:0;background:var(--sup);color:var(--tinta);font:600 20px/1 var(--f-corpo);cursor:pointer}
 .mv-zoom button+button{border-top:1px solid var(--linha)}
