@@ -673,7 +673,8 @@ td input[type=number]{width:100px;text-align:right;font-family:var(--f-num)}
 .arq-ja:empty{display:none}
 
 /* ===== Mapa dos projetos (14/11/2026) ===== */
-.mv{position:relative;overflow:hidden;background:#e7ebe6;touch-action:none;user-select:none;-webkit-user-select:none}
+.mv{position:relative;overflow:hidden;background:#e7ebe6;color-scheme:light;   /* o mapa fica sempre claro, mesmo com o Provius no modo escuro */
+  touch-action:none;user-select:none;-webkit-user-select:none}
 .mv-tiles{position:absolute;inset:0;z-index:0}   /* camada própria: o fundo nunca fica por cima dos traços e dos botões */
 .mv-tiles img{position:absolute;left:0;top:0;transform-origin:0 0;opacity:0;transition:opacity .25s;pointer-events:none;max-width:none}
 .mv-tiles img.ok{opacity:1}
@@ -688,10 +689,6 @@ td input[type=number]{width:100px;text-align:right;font-family:var(--f-num)}
 .mv-balao b{font-family:var(--f-num);font-size:13px}
 .mv-balao small{color:var(--suave)}
 .mv-balao i{font-style:normal;font-size:12px;font-weight:600;color:var(--c)}
-:root[data-theme="dark"] .mv{background:#1d2530}
-:root[data-theme="dark"] .mv-tiles img{filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.6)}
-:root[data-theme="dark"] .mv-attr{background:rgba(20,28,38,.75);color:#bbb}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .mv{background:#1d2530}:root:not([data-theme="light"]) .mv-tiles img{filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.6)}:root:not([data-theme="light"]) .mv-attr{background:rgba(20,28,38,.75);color:#bbb}}
 
 .mp-pag{max-width:1600px}
 .mp-grade{display:grid;grid-template-columns:310px minmax(0,1fr);gap:14px;align-items:start}
@@ -770,6 +767,4 @@ td input[type=number]{width:100px;text-align:right;font-family:var(--f-num)}
 .mv-fundo button{border:0;background:var(--sup);color:var(--suave);font:600 12px var(--f-corpo);padding:6px 8px;cursor:pointer}
 .mv-fundo button+button{border-top:1px solid var(--linha)}
 .mv-fundo button[aria-pressed="true"]{background:var(--azul-bg);color:var(--azul)}
-:root[data-theme="dark"] .mv.mv-sat .mv-tiles img{filter:none}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .mv.mv-sat .mv-tiles img{filter:none}}
 .mv.mv-sat{background:#2b3028}
