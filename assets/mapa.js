@@ -421,6 +421,8 @@ async function mapaEndereco(q, quieto) {
 }
 
 // ---------- bloco "Traçado no mapa" na Tela 2 e no As built ----------
+// 14/11/2026 (decisão do Alex): Projetos só entrega o projeto com o traçado desenhado (o banco também confere)
+const mapaTemTraco = id => !MP.linhas || MP.semTabela || (MP.porProc.get(id) || []).length > 0;
 const MB = {};
 async function mapaBloco(pre, p) {
   const sec = $('#' + pre + '-sec-mapa'); if (!sec) return; sec.hidden = false;
@@ -431,7 +433,7 @@ async function mapaBloco(pre, p) {
   if (MP.semTabela) { info.textContent = 'O mapa ainda não está no banco (provius-mapa.sql).'; bt.hidden = true; $('#' + pre + '-mapa').hidden = true; return; }
   const rs = MP.porProc.get(p.id) || [];
   bt.textContent = rs.length ? '✎ Corrigir no mapa' : '✎ Desenhar no mapa';
-  info.innerHTML = rs.length ? `<b>${fmt(rs.length)}</b> ${rs.length === 1 ? 'traço' : 'traços'} no mapa${rs.find(r => r.origem === 'provius' && r.por_nome) ? ' · desenhado por ' + esc(rs.find(r => r.origem === 'provius').por_nome) : rs.some(r => r.origem === 'google') ? ' · veio do mapa do Google' : ''}.` : 'Ainda sem rua desenhada. Desenhe o traçado do projeto para ele aparecer no mapa de todos os setores.';
+  info.innerHTML = rs.length ? `<b>${fmt(rs.length)}</b> ${rs.length === 1 ? 'traço' : 'traços'} no mapa${rs.find(r => r.origem === 'provius' && r.por_nome) ? ' · desenhado por ' + esc(rs.find(r => r.origem === 'provius').por_nome) : rs.some(r => r.origem === 'google') ? ' · veio do mapa do Google' : ''}.` : (pre === 'j' ? '<b class="mp-obrig">Obrigatório para entregar.</b> ' : '') + 'Ainda sem rua desenhada. Desenhe o traçado do projeto para ele aparecer no mapa de todos os setores.';
   const box = $('#' + pre + '-mapa'); box.hidden = !rs.length; if (!rs.length) return;
   if (!MB[pre]) MB[pre] = mvCriar(box, { fixo: true }).estilos(MP_SIT, MP_ORDEM);
   MB[pre].set(rs.map(r => r.f)).enquadrar(mvCaixa(rs.map(r => r.f)), 17);

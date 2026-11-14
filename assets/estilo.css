@@ -765,3 +765,4 @@ td input[type=number]{width:100px;text-align:right;font-family:var(--f-num)}
 .mp-conf-cab b{padding-right:110px;font-size:13.5px}
 .mp-res:has(.mp-conf-cab){max-height:420px}
 .mp-lado>*{flex-shrink:0}
+.mp-obrig{color:var(--erro)}

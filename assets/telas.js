@@ -203,6 +203,7 @@ async function projetosGravar(entregar) {
   const campos = { tipo_servico: $('#j-serv').value, origem: $('#j-origem').value, ref_pedido: $('#j-ref').value.trim(), logradouro: $('#j-logr').value.trim(),
     bairro: $('#j-bairro').value, ja_executado: $('input[name=j-exec]:checked')?.value === 'sim', potencias: ehR ? {} : potLer(),
     mod_cv: ehR ? 0 : +$('#j-cv').value || 0, mod_mod: ehR ? 0 : +$('#j-mo').value || 0, mod_dest: ehR ? 0 : +$('#j-de').value || 0, obs_projetos: $('#j-obs').value.trim() };
+  if (entregar && !mapaTemTraco(p.id)) { toast('Desenhe o traçado do projeto no mapa antes de entregar.', true); $('#j-sec-mapa').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }   // 14/11/2026: traçado obrigatório
   const tc = ehR ? {} : tcPreparar('j', entregar, campos.tipo_servico); if (!tc) return;   // tabela de carga: potências e modalidades saem dela
   Object.assign(campos, tc.campos || {});
   if (ehR) { const ok = await tarefa(() => itensGravar(p, entregar)); if (!ok) return; }
