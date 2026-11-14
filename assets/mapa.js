@@ -14,12 +14,12 @@ function mapaChave(s) {
 }
 function mapaCamada(n) {   // nome da camada do mapa do Google -> camada do Provius
   n = String(n || '').trim().toUpperCase();
-  if (/ESPECIAL LED/.test(n)) return 'CONTRATO ANTERIOR';
+  if (/ESPECIAL LED/.test(n)) return 'ESPECIAL LED';
   if (/CAMPO|QUADRA|OBRAS/.test(n)) return 'CAMPOS E QUADRAS';
   if (/VIOLENT/.test(n)) return 'ÁREAS VIOLENTAS';
   return n.replace(/^ZONA\s+/, '').replace(/\s+/g, '-');
 }
-const MAPA_CAMADAS = ['NORTE', 'LESTE', 'SUL', 'CENTRO-SUL', 'CENTRO-OESTE', 'OESTE', 'RURAL', 'CAMPOS E QUADRAS', 'ÁREAS VIOLENTAS', 'CONTRATO ANTERIOR'];
+const MAPA_CAMADAS = ['NORTE', 'LESTE', 'SUL', 'CENTRO-SUL', 'CENTRO-OESTE', 'OESTE', 'RURAL', 'CAMPOS E QUADRAS', 'ÁREAS VIOLENTAS', 'ESPECIAL LED'];
 
 // ---------- projeção (Web Mercator, mundo de 0 a 256 no zoom 0) ----------
 const mvX = lon => (lon + 180) / 360 * 256;
@@ -214,7 +214,7 @@ function mvCriar(box, op = {}) {
 
 // ---------- aba Mapa ----------
 const MP_SIT = {   // situação no Provius -> cor do traço (a ordem é a de desenho: os ativos ficam por cima)
-  ant: { nome: 'Contrato anterior', cor: '#8a7560', larg: .8, alfa: .75 },
+  ant: { nome: 'Especial LED (contrato anterior)', cor: '#8a7560', larg: .8, alfa: .75 },
   sem: { nome: 'Sem processo no Provius', cor: '#7d8a99', larg: .9 },
   fim: { nome: 'Concluído / enviado à AGEMAN', cor: '#2f9a55' },
   canc: { nome: 'Cancelado', cor: '#b4322b', tra: true },
@@ -225,7 +225,7 @@ const MP_SIT = {   // situação no Provius -> cor do traço (a ordem é a de de
   e1: { nome: 'Projeto (Projetos)', cor: '#1f6fd1', larg: 1.3 }
 };
 const MP_ORDEM = Object.keys(MP_SIT), MP_LEG = ['e1', 'e2', 'e3', 'e4', 'e5', 'fim', 'canc', 'sem', 'ant'];
-const mpSit = (d, r) => r && r.camada === 'CONTRATO ANTERIOR' && !d ? 'ant' : !d ? 'sem' : d.cancelado ? 'canc' : d.etapa === 6 ? 'fim' : 'e' + d.etapa;
+const mpSit = (d, r) => r && r.camada === 'ESPECIAL LED' && !d ? 'ant' : !d ? 'sem' : d.cancelado ? 'canc' : d.etapa === 6 ? 'fim' : 'e' + d.etapa;
 const mpPodeEditar = () => !!EU && (EU.admin || EU.setor === 'Projetos');
 const MP = { linhas: null, fs: [], mv: null, sel: null, sit: new Set(MP_LEG), filt: { cam: '*', ano: '*', tipo: '*', q: '' }, semTabela: false, iniciado: false };
 
@@ -258,7 +258,7 @@ function mapaPassa(r) {
   return true;
 }
 function mpRotulo(f) {
-  const r = f.r, d = r.d; if (r.camada === 'CONTRATO ANTERIOR' && !d) return '<b>Contrato anterior</b><small>' + esc(r.nome || '') + '</small>';
+  const r = f.r, d = r.d; if (r.camada === 'ESPECIAL LED' && !d) return '<b>Especial LED</b><small>Rua do contrato anterior · ' + esc(r.nome || '') + '</small>';
   return `<b>${esc(d ? d.numero : r.chave || r.nome || 'Sem número')}</b><small>${esc(d ? (d.logradouro || '') + (d.bairro ? ' · ' + d.bairro : '') : (r.descricao || r.nome || ''))}</small><i style="--c:${MP_SIT[f.est].cor}">${esc(MP_SIT[f.est].nome)}</i>`;
 }
 
@@ -324,7 +324,7 @@ function mapaPainelSel() {
   const linhas = d ? [['Logradouro', d.logradouro], ['Bairro / zona', (d.bairro || '—') + (d.zona ? ' · ' + d.zona : '')], ['Serviço', (d.tipo_servico === 'EXPANSÃO' ? 'CRESCIMENTO VEGETATIVO' : d.tipo_servico) || (d.tipo === 'R' ? 'REEQUILÍBRIO' : '—')], ['Pontos', fmt(d.total_pontos)]] : [['Camada', r.camada]];
   el.hidden = false;
   el.innerHTML = `<div class="mp-sel-cab"><span><i style="--c:${MP_SIT[est].cor}" class="${MP_SIT[est].tra ? 'tra' : ''}"></i>${esc(MP_SIT[est].nome)}</span><button type="button" class="mp-x" id="mp-sel-x" aria-label="Fechar">×</button></div>
-    <h3>${esc(d ? d.numero : r.chave || (r.camada === 'CONTRATO ANTERIOR' ? 'Rua do contrato anterior' : r.nome || 'Sem número'))}</h3>
+    <h3>${esc(d ? d.numero : r.chave || (r.camada === 'ESPECIAL LED' ? 'Especial LED · contrato anterior' : r.nome || 'Sem número'))}</h3>
     <dl>${linhas.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v || '—')}</dd>`).join('')}</dl>
     ${desc.length ? `<p class="mp-desc">${desc.map(esc).join('<br>')}</p>` : ''}
     <p class="ajuda" style="margin:0">${g.length ? fmt(g.length) + (g.length === 1 ? ' traço' : ' traços') + (g.some(x => x.origem === 'google') ? ' · veio do mapa do Google' : '') + (g.find(x => x.origem === 'provius' && x.por_nome) ? ' · desenhado por ' + esc(g.find(x => x.origem === 'provius').por_nome) + ' em ' + dataBR(g.find(x => x.origem === 'provius').em) : '') : 'Ainda sem rua desenhada no mapa.'}${!d && r && r.chave ? '<br>Não há processo ' + esc(r.chave) + ' no Provius.' : ''}</p>
@@ -336,7 +336,7 @@ function mapaPainelSel() {
 // ---------- conferência: mapa x processos do Provius (o histórico da planilha já está no banco) ----------
 function mapaConfGrupos() {
   const sem = new Map(), semNum = [], canc = new Map(), com = new Set();
-  MP.linhas.forEach(r => { if (r.camada === 'CONTRATO ANTERIOR') return;
+  MP.linhas.forEach(r => { if (r.camada === 'ESPECIAL LED') return;
     if (r.d) { com.add(r.d.id); if (r.d.cancelado) canc.set(r.d.id, r); }
     else if (r.chave) { if (!sem.has(r.chave)) sem.set(r.chave, r); }
     else semNum.push(r); });
@@ -450,7 +450,7 @@ function mapaLerKml(txt) {
     const nome = ([...pm.children].find(c => c.nodeName === 'name')?.textContent || '').trim();
     let desc = ''; [...pm.getElementsByTagName('Data')].forEach(dd => { if (/^descri/i.test(dd.getAttribute('name') || '')) desc = (dd.getElementsByTagName('value')[0]?.textContent || '').trim(); });
     if (!desc) desc = ([...pm.children].find(c => c.nodeName === 'description')?.textContent || '').replace(/<[^>]+>/g, ' ').replace(/^descri\S*:\s*/i, '').replace(/tessellate:.*$/i, '').trim();
-    const chave = camada === 'CONTRATO ANTERIOR' ? null : (mapaChave(nome) || mapaChave(desc));
+    const chave = camada === 'ESPECIAL LED' ? null : (mapaChave(nome) || mapaChave(desc));
     const add = (tipo, coords) => { if ((tipo === 'T' && coords) || (tipo === 'L' && coords.length >= 2) || (tipo === 'P' && coords.length >= 3)) saida.push({ camada, nome, descricao: desc, chave, tipo, coords }); };
     [...pm.getElementsByTagName('LineString')].forEach(g => add('L', cs(g.getElementsByTagName('coordinates')[0]?.textContent)));
     [...pm.getElementsByTagName('Polygon')].forEach(g => { const o = g.getElementsByTagName('outerBoundaryIs')[0] || g; let c = cs(o.getElementsByTagName('coordinates')[0]?.textContent); if (c.length > 3 && c[0][0] === c[c.length - 1][0] && c[0][1] === c[c.length - 1][1]) c = c.slice(0, -1); add('P', c); });
@@ -465,7 +465,7 @@ async function mapaImportar(arq) {
   const porCh = new Map(); D.forEach(d => { const k = mapaChave(d.numero); if (k && !porCh.has(k)) porCh.set(k, d.id); });
   tr.forEach(t => t.processo_id = t.chave ? porCh.get(t.chave) || null : null);
   const lig = new Set(tr.filter(t => t.processo_id).map(t => t.processo_id)).size, jaG = (MP.linhas || []).filter(r => r.origem === 'google').length;
-  if (!confirm(`Importar ${fmt(tr.length)} traços do mapa do Google?\n\n• ${fmt(lig)} processos do Provius ligados pelo número\n• ${fmt(tr.filter(t => t.chave && !t.processo_id).length)} traços com número que não está no Provius\n• ${fmt(tr.filter(t => t.camada === 'CONTRATO ANTERIOR').length)} ruas do contrato anterior` + (jaG ? `\n\nAs ${fmt(jaG)} ruas importadas antes do Google serão substituídas. O que Projetos desenhou no Provius fica como está.` : ''))) return;
+  if (!confirm(`Importar ${fmt(tr.length)} traços do mapa do Google?\n\n• ${fmt(lig)} processos do Provius ligados pelo número\n• ${fmt(tr.filter(t => t.chave && !t.processo_id).length)} traços com número que não está no Provius\n• ${fmt(tr.filter(t => t.camada === 'ESPECIAL LED').length)} ruas da camada Especial LED (contrato anterior)` + (jaG ? `\n\nAs ${fmt(jaG)} ruas importadas antes do Google serão substituídas. O que Projetos desenhou no Provius fica como está.` : ''))) return;
   const L = 400; let n = 0; ocupado(true);
   try {
     for (let i = 0; i < tr.length; i += L) { n += await rpc('mapa_importar', { p_tracos: tr.slice(i, i + L), p_limpar: i === 0 }); $('#mp-resumo').textContent = 'Importando… ' + fmt(n) + ' de ' + fmt(tr.length); }
