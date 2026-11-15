@@ -240,6 +240,29 @@ const MP_SIT = {   // situação no Provius -> cor do traço (a ordem é a de de
   e1: { nome: 'Projeto (Projetos)', cor: '#1f6fd1', larg: 1.3 }
 };
 const MP_ORDEM = Object.keys(MP_SIT), MP_LEG = ['e1', 'e2', 'e3', 'e4', 'e5', 'fim', 'canc', 'sem', 'ant'];
+// 15/11/2026 (decisão do Alex): cada projeto com a sua cor, para ver onde um começa e o outro termina;
+// projetos vizinhos ficam com cores diferentes (em áreas muito cheias pode repetir). A situação vira filtro (e ainda dá para colorir por situação).
+const MP_PALETA = ['#e6194b', '#1f6fd1', '#f58231', '#911eb4', '#0fa3b1', '#e0218a', '#2f9a55', '#c9a00c', '#000075', '#800000', '#7a8c00', '#ff6f91', '#5a3fd0', '#2b6f6f'];
+const MP_EST = { ...MP_SIT }; MP_PALETA.forEach((c, i) => { MP_EST['c' + i] = { cor: c, larg: 1.3 }; MP_EST['c' + i + 't'] = { cor: c, larg: 1.3, tra: true }; });
+const MP_ORD_TODAS = ['ant', 'sem', ...MP_PALETA.flatMap((c, i) => ['c' + i + 't', 'c' + i]), ...MP_ORDEM.filter(k => k !== 'ant' && k !== 'sem')];
+function mapaCores(fs) {   // cor por projeto: os vizinhos (até ~300 m) recebem cores diferentes
+  const gr = new Map();
+  fs.forEach(f => { const r = f.r, k = r.d ? 'p' + r.d.id : r.chave && r.camada !== 'ESPECIAL LED' ? 'c' + r.chave : null; if (!k) return;
+    let g = gr.get(k); if (!g) gr.set(k, g = { b: [...f.b], fs: [] }); else { g.b[0] = Math.min(g.b[0], f.b[0]); g.b[1] = Math.min(g.b[1], f.b[1]); g.b[2] = Math.max(g.b[2], f.b[2]); g.b[3] = Math.max(g.b[3], f.b[3]); } g.fs.push(f); });
+  const P = .002, C = .004, grade = new Map(), lista = [...gr.values()];
+  lista.forEach((g, i) => { g.i = i; for (let x = Math.floor((g.b[0] - P) / C); x <= Math.floor((g.b[2] + P) / C); x++) for (let y = Math.floor((g.b[1] - P) / C); y <= Math.floor((g.b[3] + P) / C); y++) { const k = x + ',' + y; (grade.get(k) || grade.set(k, []).get(k)).push(g); } });
+  const perto = (a, b) => a.b[0] - P <= b.b[2] && a.b[2] + P >= b.b[0] && a.b[1] - P <= b.b[3] && a.b[3] + P >= b.b[1];
+  lista.forEach(g => { const v = new Set(); for (let x = Math.floor((g.b[0] - P) / C); x <= Math.floor((g.b[2] + P) / C); x++) for (let y = Math.floor((g.b[1] - P) / C); y <= Math.floor((g.b[3] + P) / C); y++) (grade.get(x + ',' + y) || []).forEach(h => { if (h !== g && perto(g, h)) v.add(h); }); g.viz = [...v]; });
+  // pinta primeiro os projetos com mais vizinhos (Welsh-Powell)
+  lista.sort((a, b) => b.viz.length - a.viz.length || a.i - b.i).forEach(m => {
+    const usados = new Array(MP_PALETA.length).fill(0); m.viz.forEach(h => { if (h.cor != null) usados[h.cor]++; });
+    let c = usados.indexOf(0); if (c < 0) c = usados.indexOf(Math.min(...usados)); m.cor = c;
+    m.fs.forEach(f => f.cp = 'c' + c + (f.sit === 'canc' ? 't' : ''));
+  });
+  fs.forEach(f => { if (!f.cp) f.cp = f.sit === 'ant' ? 'ant' : 'sem'; });
+}
+let MP_COR = 'proj'; try { if (localStorage.getItem('provius-mapa-cor') === 'sit') MP_COR = 'sit'; } catch (e) { }
+function mapaModoCor() { MP.fs.forEach(f => f.est = MP_COR === 'sit' ? f.sit : f.cp); }
 const mpSit = (d, r) => r && r.camada === 'ESPECIAL LED' && !d ? 'ant' : !d ? 'sem' : d.cancelado ? 'canc' : d.etapa === 6 ? 'fim' : 'e' + d.etapa;
 const mpPodeEditar = () => !!EU && (EU.admin || EU.setor === 'Projetos');
 const MP = { linhas: null, fs: [], mv: null, sel: null, sit: new Set(MP_LEG), filt: { cam: '*', ano: '*', tipo: '*', q: '' }, semTabela: false, iniciado: false };
@@ -260,13 +283,14 @@ function mapaIndexar() {
   MP.fs = (MP.linhas || []).filter(r => Array.isArray(r.coords) && r.coords.length).map(r => {
     const d = (r.processo_id && porId.get(r.processo_id)) || (r.chave && porCh.get(r.chave)) || null; r.d = d;
     if (d) { if (!MP.porProc.has(d.id)) MP.porProc.set(d.id, []); MP.porProc.get(d.id).push(r); }
-    const f = mvFeicao(r.id, r.tipo, r.coords, mpSit(d, r), r); r.f = f; return f;
+    const f = mvFeicao(r.id, r.tipo, r.coords, mpSit(d, r), r); f.sit = f.est; r.f = f; return f;
   });
+  mapaCores(MP.fs); mapaModoCor();
 }
 const mpAno = r => r.d ? r.d.ano : r.chave ? +r.chave.slice(-4) : null;
 const mpTipo = r => r.d ? (r.d.tipo || '') : r.chave ? (/^([A-Z]+)-/.exec(r.chave)?.[1] || '') : null;
 function mapaPassa(r) {
-  const F = MP.filt; if (!MP.sit.has(r.f.est)) return false;
+  const F = MP.filt; if (!MP.sit.has(r.f.sit)) return false;
   if (F.cam !== '*' && r.camada !== F.cam) return false;
   if (F.ano !== '*' && mpAno(r) !== +F.ano) return false;
   if (F.tipo !== '*' && mpTipo(r) !== F.tipo) return false;
@@ -274,18 +298,18 @@ function mapaPassa(r) {
 }
 function mpRotulo(f) {
   const r = f.r, d = r.d; if (r.camada === 'ESPECIAL LED' && !d) return '<b>Especial LED</b><small>Rua do contrato anterior · ' + esc(r.nome || '') + '</small>';
-  return `<b>${esc(d ? d.numero : r.chave || r.nome || 'Sem número')}</b><small>${esc(d ? (d.logradouro || '') + (d.bairro ? ' · ' + d.bairro : '') : (r.descricao || r.nome || ''))}</small><i style="--c:${MP_SIT[f.est].cor}">${esc(MP_SIT[f.est].nome)}</i>`;
+  return `<b>${esc(d ? d.numero : r.chave || r.nome || 'Sem número')}</b><small>${esc(d ? (d.logradouro || '') + (d.bairro ? ' · ' + d.bairro : '') : (r.descricao || r.nome || ''))}</small><i style="--c:${MP_SIT[f.sit].cor}">${esc(MP_SIT[f.sit].nome)}</i>`;
 }
 
 function mapaIniciar() {
   if (MP.iniciado) return; MP.iniciado = true;
-  MP.mv = mvCriar($('#mp-mapa'), { rotulo: mpRotulo, aoClicar: f => mapaSelecionar(f ? f.r : null, false) }).estilos(MP_SIT, MP_ORDEM);
+  MP.mv = mvCriar($('#mp-mapa'), { rotulo: mpRotulo, aoClicar: f => mapaSelecionar(f ? f.r : null, false) }).estilos(MP_EST, MP_ORD_TODAS);
   $('#mp-busca').oninput = () => { MP.filt.q = $('#mp-busca').value.trim(); mapaResultados(); };
   ['cam', 'ano', 'tipo'].forEach(k => $('#mp-f-' + k).onchange = () => { MP.filt[k] = $('#mp-f-' + k).value; mapaAplicar(); });
   $('#mp-recarregar').onclick = () => tarefa(async () => { await recarregar(); await mapaCarregar(true); mapaMonta(); });
   $('#mp-importar').onclick = () => $('#mp-kml').click();
   $('#mp-kml').onchange = () => { const f = $('#mp-kml').files[0]; $('#mp-kml').value = ''; if (f) mapaImportar(f); };
-  $('#mp-tudo').onclick = () => MP.mv.enquadrar(mvCaixa(MP.fs.filter(f => mapaPassa(f.r) && f.est !== 'ant')) || mvCaixa(MP.fs));
+  $('#mp-tudo').onclick = () => MP.mv.enquadrar(mvCaixa(MP.fs.filter(f => mapaPassa(f.r) && f.sit !== 'ant')) || mvCaixa(MP.fs));
 }
 async function mapaAbrir() {
   mapaIniciar();
@@ -308,9 +332,12 @@ function mapaAplicar() {
   MP.mv.filtro(f => mapaPassa(f.r) || f.r === MP.sel || (MP.sel && MP.sel.d && f.r.d === MP.sel.d));
   // legenda com a contagem de projetos (traços sem processo contam por traço)
   const cont = {}, vistos = new Set();
-  MP.linhas.forEach(r => { const k = r.f.est, F = MP.filt; if ((F.cam !== '*' && r.camada !== F.cam) || (F.ano !== '*' && mpAno(r) !== +F.ano) || (F.tipo !== '*' && mpTipo(r) !== F.tipo)) return;
+  MP.linhas.forEach(r => { const k = r.f.sit, F = MP.filt; if ((F.cam !== '*' && r.camada !== F.cam) || (F.ano !== '*' && mpAno(r) !== +F.ano) || (F.tipo !== '*' && mpTipo(r) !== F.tipo)) return;
     const ch = r.d ? 'p' + r.d.id : r.chave ? 'c' + r.chave : 't' + r.id; if (vistos.has(k + ch)) return; vistos.add(k + ch); cont[k] = (cont[k] || 0) + 1; });
-  $('#mp-leg').innerHTML = MP_LEG.map(k => `<label class="mp-leg-i${MP.sit.has(k) ? '' : ' off'}"><input type="checkbox" value="${k}"${MP.sit.has(k) ? ' checked' : ''}><i class="${MP_SIT[k].tra ? 'tra' : ''}" style="--c:${MP_SIT[k].cor}"></i><span>${MP_SIT[k].nome}</span><b>${fmt(cont[k] || 0)}</b></label>`).join('');
+  $$('.mp-cor button').forEach(b => { b.setAttribute('aria-pressed', b.dataset.c === MP_COR); b.onclick = () => { MP_COR = b.dataset.c; try { localStorage.setItem('provius-mapa-cor', MP_COR); } catch (e) { } mapaModoCor(); MP.mv.redesenha(); mapaAplicar(); }; });
+  $('#mp-cor-dica').textContent = MP_COR === 'proj' ? 'Cada projeto tem a sua cor, diferente da dos vizinhos. Cancelados ficam tracejados. Passe o mouse ou clique para ver a situação; use as caixas abaixo para filtrar.' : 'Cada cor é a situação do processo no Provius.';
+  const proj = MP_COR === 'proj';
+  $('#mp-leg').innerHTML = MP_LEG.map(k => `<label class="mp-leg-i${MP.sit.has(k) ? '' : ' off'}${proj && k !== 'ant' ? ' sem-cor' : ''}"><input type="checkbox" value="${k}"${MP.sit.has(k) ? ' checked' : ''}><i class="${MP_SIT[k].tra || (proj && k === 'canc') ? 'tra' : ''}" style="--c:${proj && k !== 'ant' ? 'var(--suave)' : MP_SIT[k].cor}"></i><span>${MP_SIT[k].nome}</span><b>${fmt(cont[k] || 0)}</b></label>`).join('');
   $$('#mp-leg input').forEach(i => i.onchange = () => { i.checked ? MP.sit.add(i.value) : MP.sit.delete(i.value); mapaAplicar(); });
   const proc = new Set(MP.linhas.filter(r => r.d).map(r => r.d.id)), semTr = D.filter(d => !d.cancelado && !proc.has(d.id)).length;
   $('#mp-resumo').innerHTML = `<b>${fmt(proc.size)}</b> processos com traçado · <b>${fmt(MP.linhas.length)}</b> traços no mapa` + (semTr ? ` · <span title="Processos do Provius (não cancelados) que ainda não têm rua desenhada">${fmt(semTr)} processos sem traçado</span>` : '');
@@ -322,7 +349,7 @@ function mapaResultados() {
     if ((ch && mapaChave(d.numero) === ch) || (!ch && (d.numero.includes(q) || (d.logradouro || '').toUpperCase().includes(q) || (d.bairro || '').toUpperCase().includes(q)))) { vistos.add(d.id); res.push({ d, rs: MP.porProc.get(d.id) || [] }); } }
   if (res.length < 40) MP.linhas.forEach(r => { if (r.d || res.length >= 40) return; const t = ((r.chave || '') + ' ' + (r.nome || '') + ' ' + (r.descricao || '')).toUpperCase(); if ((ch && r.chave === ch) || (!ch && t.includes(q))) { const k = r.chave || 't' + r.id; if (vistos.has(k)) return; vistos.add(k); res.push({ d: null, rs: MP.linhas.filter(x => !x.d && x.chave && x.chave === r.chave).concat(r.chave ? [] : [r]) }); } });
   el.hidden = false;
-  el.innerHTML = res.length ? res.map((x, i) => { const r0 = x.rs[0], est = x.d ? mpSit(x.d) : r0 ? r0.f.est : 'sem';
+  el.innerHTML = res.length ? res.map((x, i) => { const r0 = x.rs[0], est = x.d ? mpSit(x.d) : r0 ? r0.f.sit : 'sem';
     return `<button type="button" class="mp-res-i" data-i="${i}"${x.rs.length ? '' : ' data-sem="1"'}><i style="--c:${MP_SIT[est].cor}"></i><b>${esc(x.d ? x.d.numero : r0?.chave || r0?.nome || '')}</b><span>${esc(x.d ? (x.d.logradouro || '') + (x.d.bairro ? ' · ' + x.d.bairro : '') : (r0?.descricao || ''))}</span><small>${x.rs.length ? fmt(x.rs.length) + (x.rs.length === 1 ? ' traço' : ' traços') : 'sem traçado'}</small></button>`; }).join('') : '<p class="vazio">Nada encontrado.</p>';
   $$('#mp-res .mp-res-i').forEach(b => b.onclick = () => { const x = res[+b.dataset.i]; el.hidden = true; if (x.rs.length) mapaSelecionar(x.rs[0], true); else mapaSelecionarSem(x.d); });
 }
@@ -335,7 +362,7 @@ function mapaSelecionar(r, ir) {
 function mapaSelecionarSem(d) { MP.sel = null; MP.semSel = d; MP.mv.selecionar([]); mapaAplicar(); mapaPainelSel(); }
 function mapaPainelSel() {
   const el = $('#mp-sel'), r = MP.sel, d = r ? r.d : MP.semSel; if (!r && !d) { el.hidden = true; return; }
-  const g = r ? mapaGrupo(r) : [], est = d ? mpSit(d) : r.f.est, desc = [...new Set(g.map(x => x.descricao).filter(Boolean))].slice(0, 4);
+  const g = r ? mapaGrupo(r) : [], est = d ? mpSit(d) : r.f.sit, desc = [...new Set(g.map(x => x.descricao).filter(Boolean))].slice(0, 4);
   const linhas = d ? [['Logradouro', d.logradouro], ['Bairro / zona', (d.bairro || '—') + (d.zona ? ' · ' + d.zona : '')], ['Serviço', (d.tipo_servico === 'EXPANSÃO' ? 'CRESCIMENTO VEGETATIVO' : d.tipo_servico) || (d.tipo === 'R' ? 'REEQUILÍBRIO' : '—')], ['Pontos', fmt(d.total_pontos)]] : [['Camada', r.camada]];
   el.hidden = false;
   el.innerHTML = `<div class="mp-sel-cab"><span><i style="--c:${MP_SIT[est].cor}" class="${MP_SIT[est].tra ? 'tra' : ''}"></i>${esc(MP_SIT[est].nome)}</span><button type="button" class="mp-x" id="mp-sel-x" aria-label="Fechar">×</button></div>
@@ -370,7 +397,7 @@ function mapaConferencia() {
 function mapaConfLista(g) {
   const el = $('#mp-res'); $('#mp-busca').value = ''; MP.filt.q = ''; el.hidden = false;
   el.innerHTML = `<div class="mp-conf-cab"><b>${esc(g.nome)}</b><span class="ajuda">${esc(g.dica)}</span><span class="mp-conf-bts"><button type="button" class="link-pdf" id="mp-conf-csv">⬇ Baixar lista</button><button type="button" class="mp-x" id="mp-conf-x" aria-label="Fechar">×</button></span></div>`
-    + (g.itens.length ? g.itens.slice(0, 400).map((x, i) => `<button type="button" class="mp-res-i" data-i="${i}"${x.r ? '' : ' data-sem="1"'}><i style="--c:${MP_SIT[x.r ? x.r.f.est : mpSit(x.d)].cor}"></i><b>${esc(x.n)}</b><span>${esc(x.t)}</span><small>${esc(x.c || '')}</small></button>`).join('') + (g.itens.length > 400 ? `<p class="ajuda" style="margin:6px">Mostrando 400 de ${fmt(g.itens.length)}. A lista completa vem em "Baixar lista".</p>` : '') : '<p class="vazio">Nada nesta conferência. 👍</p>');
+    + (g.itens.length ? g.itens.slice(0, 400).map((x, i) => `<button type="button" class="mp-res-i" data-i="${i}"${x.r ? '' : ' data-sem="1"'}><i style="--c:${MP_SIT[x.r ? x.r.f.sit : mpSit(x.d)].cor}"></i><b>${esc(x.n)}</b><span>${esc(x.t)}</span><small>${esc(x.c || '')}</small></button>`).join('') + (g.itens.length > 400 ? `<p class="ajuda" style="margin:6px">Mostrando 400 de ${fmt(g.itens.length)}. A lista completa vem em "Baixar lista".</p>` : '') : '<p class="vazio">Nada nesta conferência. 👍</p>');
   $('#mp-conf-x').onclick = () => { el.hidden = true; el.innerHTML = ''; };
   $('#mp-conf-csv').onclick = () => {
     const linhas = [['Número', 'Logradouro / descrição', g.k === 'semtr' ? 'Situação' : 'Camada / zona'], ...g.itens.map(x => [x.n, x.t, x.c || ''])];
@@ -394,14 +421,14 @@ async function mapaEditar(d, depois) {
   $('#me-busca').value = [d.logradouro, d.bairro, 'Manaus'].filter(Boolean).join(', ');
   $('#me-res').innerHTML = ''; abreModal('#modal-mapa');
   if (!ME.mv) {
-    ME.mv = mvCriar($('#me-mapa'), { aoEditar: mapaEdBotoes }).estilos(Object.fromEntries(Object.entries(MP_SIT).map(([k, v]) => [k, { ...v, alfa: .45 }])), MP_ORDEM);
+    ME.mv = mvCriar($('#me-mapa'), { aoEditar: mapaEdBotoes }).estilos(Object.fromEntries(Object.entries(MP_EST).map(([k, v]) => [k, { ...v, alfa: .45 }])), MP_ORD_TODAS);
     $('#me-linha').onclick = () => ME.mv.edNova('L'); $('#me-area').onclick = () => ME.mv.edNova('P');
     $('#me-fim').onclick = () => ME.mv.edConcluir(); $('#me-desf').onclick = () => ME.mv.edDesfazer(); $('#me-apagar').onclick = () => ME.mv.edApagar();
     $('#me-salvar').onclick = mapaEdSalvar; $('#me-cancelar').onclick = () => fechaModal('#modal-mapa');
     $('#f-me-busca').onsubmit = e => { e.preventDefault(); mapaEndereco($('#me-busca').value); };
   }
   const meus = MP.porProc.get(d.id) || [];
-  ME.mv.set(MP.fs).filtro(f => f.r.d?.id !== d.id && (f.est !== 'ant' || ME.mv.z >= 15)).selecionar([]);   // os traços deste processo viram a edição
+  ME.mv.set(MP.fs).filtro(f => f.r.d?.id !== d.id && (f.sit !== 'ant' || ME.mv.z >= 15)).selecionar([]);   // os traços deste processo viram a edição
   ME.mv.editar(meus.map(r => ({ tipo: r.tipo, coords: r.coords, descricao: r.descricao })));
   requestAnimationFrame(() => { const b = ME.mv.edCaixa(); if (b) ME.mv.enquadrar(b, 18); else ME.mv.centro(MV_CENTRO[0], MV_CENTRO[1], 12); if (!b && d.logradouro) mapaEndereco($('#me-busca').value, true); });
   mapaEdBotoes();
@@ -450,7 +477,7 @@ async function mapaBloco(pre, p) {
   bt.textContent = rs.length ? '✎ Corrigir no mapa' : '✎ Desenhar no mapa';
   info.innerHTML = rs.length ? `<b>${fmt(rs.length)}</b> ${rs.length === 1 ? 'traço' : 'traços'} no mapa${rs.find(r => r.origem === 'provius' && r.por_nome) ? ' · desenhado por ' + esc(rs.find(r => r.origem === 'provius').por_nome) : rs.some(r => r.origem === 'google') ? ' · veio do mapa do Google' : ''}.` : (pre === 'j' ? '<b class="mp-obrig">Obrigatório para entregar.</b> ' : '') + 'Ainda sem rua desenhada. Desenhe o traçado do projeto para ele aparecer no mapa de todos os setores.';
   const box = $('#' + pre + '-mapa'); box.hidden = !rs.length; if (!rs.length) return;
-  if (!MB[pre]) MB[pre] = mvCriar(box, { fixo: true }).estilos(MP_SIT, MP_ORDEM);
+  if (!MB[pre]) MB[pre] = mvCriar(box, { fixo: true }).estilos(MP_EST, MP_ORD_TODAS);
   MB[pre].set(rs.map(r => r.f)).enquadrar(mvCaixa(rs.map(r => r.f)), 17);
 }
 

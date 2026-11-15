@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap">
-<link rel="stylesheet" href="assets/estilo.css?v=17">
+<link rel="stylesheet" href="assets/estilo.css?v=18">
 <link rel="stylesheet" href="assets/natal.css?v=3">
 <script>try{var t=localStorage.getItem('provius-tema');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 </head>
@@ -120,7 +120,7 @@
 <!-- ===== MAPA DOS PROJETOS ===== -->
 <main class="pagina sem-lado mp-pag" id="tela-mapa" hidden>
   <div style="min-width:0">
-    <div class="cab"><div><div class="etapa">Ruas e áreas de cada projeto</div><h1>Mapa dos projetos</h1><p class="sub">Cada cor é a situação do processo no Provius. Clique numa rua para ver o projeto. Só o Setor de Projetos desenha ou corrige o traçado.</p></div>
+    <div class="cab"><div><div class="etapa">Ruas e áreas de cada projeto</div><h1>Mapa dos projetos</h1><p class="sub">Cada projeto tem a sua cor. Clique numa rua para ver o projeto. Só o Setor de Projetos desenha ou corrige o traçado.</p></div>
       <button type="button" class="btn" id="mp-recarregar">↻ Atualizar</button></div>
     <p class="faixa-dev" id="mp-vazio" hidden></p>
     <div class="mp-grade">
@@ -128,6 +128,7 @@
         <label class="busca mp-busca">Buscar<input type="search" id="mp-busca" placeholder="nº, logradouro ou bairro" autocomplete="off"></label>
         <div class="mp-res" id="mp-res" hidden></div>
         <section class="mp-sel" id="mp-sel" hidden></section>
+        <div class="mp-bloco"><h4>Cores</h4><div class="mp-cor" role="group" aria-label="Colorir o mapa"><button type="button" data-c="proj">Por projeto</button><button type="button" data-c="sit">Por situação</button></div><p class="ajuda mp-cor-dica" id="mp-cor-dica"></p></div>
         <div class="mp-bloco"><h4>Situação</h4><div class="mp-leg" id="mp-leg"></div></div>
         <div class="mp-bloco mp-filtros">
           <label>Camada<select id="mp-f-cam"></select></label>
@@ -542,7 +543,7 @@
 <script src="assets/banco.js?v=2"></script>
 <script src="assets/historico.js?v=1"></script>
 <script src="assets/ageman.js?v=4"></script>
-<script src="assets/mapa.js?v=3"></script>
+<script src="assets/mapa.js?v=4"></script>
 <script src="assets/app.js?v=10"></script>
 <script src="assets/natal.js?v=5"></script>
 </body>

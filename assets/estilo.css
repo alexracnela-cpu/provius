@@ -768,3 +768,9 @@ td input[type=number]{width:100px;text-align:right;font-family:var(--f-num)}
 .mv-fundo button+button{border-top:1px solid var(--linha)}
 .mv-fundo button[aria-pressed="true"]{background:var(--azul-bg);color:var(--azul)}
 .mv.mv-sat{background:#2b3028}
+.mp-cor{display:flex;border:1px solid var(--linha);border-radius:8px;overflow:hidden}
+.mp-cor button{flex:1;border:0;background:var(--sup);color:var(--suave);font:600 13px var(--f-corpo);padding:7px 6px;cursor:pointer}
+.mp-cor button+button{border-left:1px solid var(--linha)}
+.mp-cor button[aria-pressed="true"]{background:var(--azul-bg);color:var(--azul)}
+.mp-cor-dica{margin:6px 0 0;font-size:12.5px}
+.mp-leg-i.sem-cor i{opacity:.35;height:3px}
