@@ -96,7 +96,7 @@ function mvCriar(box, op = {}) {
       const pts = l.filter(f => f.tipo === 'T'); if (pts.length) { ctx.beginPath(); pts.forEach(f => caminho(f, x0, y0, s)); ctx.fillStyle = e.cor; ctx.fill(); }
     }
     ctx.setLineDash([]);
-    const real = [...M.f.filter(f => M.sel.has(f.id))]; if (M.hov && !M.sel.has(M.hov.id)) real.push(M.hov);
+    const real = [...M.f.filter(f => M.sel.has(f.id))]; (M.hovG || []).forEach(f => { if (!M.sel.has(f.id)) real.push(f); });   // passar o mouse destaca o projeto inteiro
     real.forEach(f => { const e = M.est[f.est] || { cor: '#000' }, sel = M.sel.has(f.id);
       ctx.beginPath(); caminho(f, x0, y0, s); ctx.strokeStyle = '#fff'; ctx.lineWidth = lb * 2 + (sel ? 7 : 4); ctx.globalAlpha = .95; ctx.stroke(); ctx.globalAlpha = 1;
       ctx.beginPath(); caminho(f, x0, y0, s); ctx.strokeStyle = sel ? '#0d1b2a' : e.cor; ctx.lineWidth = lb * 2 + (sel ? 3 : 1.5); ctx.stroke();
@@ -176,7 +176,7 @@ function mvCriar(box, op = {}) {
     cv.addEventListener('pointermove', e => {
       const [px, py] = pos(e);
       if (!ptr.has(e.pointerId)) { if (e.pointerType === 'mouse') { if (M.ed) { M.mouse = mundo(px, py); cv.style.cursor = M.ed.novo ? 'crosshair' : edVertice(px, py) ? 'move' : edSegmento(px, py) ? 'copy' : 'grab'; if (M.ed.novo) pede(); return; }
-        const f = achar(px, py); if (f !== M.hov) { M.hov = f; pede(); } cv.style.cursor = f ? 'pointer' : 'grab'; mostraBalao(f, px, py); } return; }
+        const f = achar(px, py); if (f !== M.hov) { M.hov = f; M.hovG = f ? (op.grupo ? op.grupo(f) : [f]) : []; pede(); } cv.style.cursor = f ? 'pointer' : 'grab'; mostraBalao(f, px, py); } return; }
       ptr.set(e.pointerId, [px, py]);
       if (ptr.size === 2 && pin) { const [a, b] = [...ptr.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); zoomEm(pin.z + Math.log2(d / pin.d), (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); return; }
       if (!arr) return; const dx = px - arr.px, dy = py - arr.py; if (!arr.mov && Math.hypot(dx, dy) > 4) arr.mov = true; if (!arr.mov) return;
@@ -191,7 +191,7 @@ function mvCriar(box, op = {}) {
         if (!a.mov && e.type === 'pointerup') { const [px, py] = pos(e); if (M.ed) edClique(px, py); else { const f = achar(px, py, e.pointerType === 'mouse' ? 7 : 14); op.aoClicar?.(f, { lon: mvLon(mundo(px, py)[0]), lat: mvLat(mundo(px, py)[1]) }); } } }
     };
     cv.addEventListener('pointerup', solta); cv.addEventListener('pointercancel', solta);
-    cv.addEventListener('pointerleave', () => { if (!ptr.size) { balao.hidden = true; if (M.hov) { M.hov = null; pede(); } } });
+    cv.addEventListener('pointerleave', () => { if (!ptr.size) { balao.hidden = true; if (M.hov) { M.hov = null; M.hovG = []; pede(); } } });
     cv.addEventListener('wheel', e => { e.preventDefault(); const [px, py] = pos(e); zoomEm(M.z - e.deltaY * (e.deltaMode ? .06 : .0022), px, py); }, { passive: false });
     cv.addEventListener('dblclick', e => { e.preventDefault(); const [px, py] = pos(e); if (M.ed) { if (M.ed.novo) edConcluir(); return; } zoomSuave(Math.round(M.z) + 1, px, py); });
     cv.addEventListener('contextmenu', e => { e.preventDefault(); if (!M.ed) return; const [px, py] = pos(e), v = edVertice(px, py); if (v) { M.ed.linhas[v.li].pts.splice(v.pi, 1); if (M.ed.linhas[v.li].pts.length < (M.ed.linhas[v.li].tipo === 'P' ? 3 : 2) && !(M.ed.novo && v.li === M.ed.at)) { M.ed.linhas.splice(v.li, 1); M.ed.at = -1; M.ed.novo = false; } pede(); op.aoEditar?.(); } });
@@ -214,7 +214,7 @@ function mvCriar(box, op = {}) {
     centro(lon, lat, z) { M.cx = mvX(lon); M.cy = mvY(lat); if (z) M.z = z; pede(); return api; },
     redesenha() { pede(); return api; },
     // edição: linhas = [{ tipo, coords: [[lon,lat],…], descricao }]
-    editar(linhas) { M.ed = linhas ? { linhas: linhas.map(l => ({ tipo: l.tipo === 'P' ? 'P' : 'L', descricao: l.descricao || '', pts: l.coords.map(([lon, lat]) => [mvX(lon), mvY(lat)]) })), at: -1, novo: false } : null; M.hov = null; balao.hidden = true; cv.style.cursor = 'grab'; pede(); return api; },
+    editar(linhas) { M.ed = linhas ? { linhas: linhas.map(l => ({ tipo: l.tipo === 'P' ? 'P' : 'L', descricao: l.descricao || '', pts: l.coords.map(([lon, lat]) => [mvX(lon), mvY(lat)]) })), at: -1, novo: false } : null; M.hov = null; M.hovG = []; balao.hidden = true; cv.style.cursor = 'grab'; pede(); return api; },
     edNova(tipo) { const ed = M.ed; if (!ed) return; if (ed.novo) edConcluir(); ed.linhas.push({ tipo, descricao: '', pts: [] }); ed.at = ed.linhas.length - 1; ed.novo = true; pede(); op.aoEditar?.(); },
     edConcluir,
     edDesfazer() { const ed = M.ed, l = ed?.linhas[ed.at]; if (!l) return; if (l.pts.length) l.pts.pop(); if (!l.pts.length && ed.novo) { ed.linhas.splice(ed.at, 1); ed.at = -1; ed.novo = false; } pede(); op.aoEditar?.(); },
@@ -298,12 +298,12 @@ function mapaPassa(r) {
 }
 function mpRotulo(f) {
   const r = f.r, d = r.d; if (r.camada === 'ESPECIAL LED' && !d) return '<b>Especial LED</b><small>Rua do contrato anterior · ' + esc(r.nome || '') + '</small>';
-  return `<b>${esc(d ? d.numero : r.chave || r.nome || 'Sem número')}</b><small>${esc(d ? (d.logradouro || '') + (d.bairro ? ' · ' + d.bairro : '') : (r.descricao || r.nome || ''))}</small><i style="--c:${MP_SIT[f.sit].cor}">${esc(MP_SIT[f.sit].nome)}</i>`;
+  return `<b>${esc(d ? d.numero : r.chave || r.nome || 'Sem número')}</b><small>${esc(d ? (d.logradouro || '') + (d.bairro ? ' · ' + d.bairro : '') : (r.descricao || r.nome || ''))}</small><i style="--c:${MP_SIT[f.sit].cor}">${esc(MP_SIT[f.sit].nome)}</i>${(n => n > 1 ? `<small>${fmt(n)} traços no projeto</small>` : '')(mapaGrupo(r).length)}`;
 }
 
 function mapaIniciar() {
   if (MP.iniciado) return; MP.iniciado = true;
-  MP.mv = mvCriar($('#mp-mapa'), { rotulo: mpRotulo, aoClicar: f => mapaSelecionar(f ? f.r : null, false) }).estilos(MP_EST, MP_ORD_TODAS);
+  MP.mv = mvCriar($('#mp-mapa'), { rotulo: mpRotulo, grupo: f => mapaGrupo(f.r).map(r => r.f), aoClicar: f => mapaSelecionar(f ? f.r : null, false) }).estilos(MP_EST, MP_ORD_TODAS);
   $('#mp-busca').oninput = () => { MP.filt.q = $('#mp-busca').value.trim(); mapaResultados(); };
   ['cam', 'ano', 'tipo'].forEach(k => $('#mp-f-' + k).onchange = () => { MP.filt[k] = $('#mp-f-' + k).value; mapaAplicar(); });
   $('#mp-recarregar').onclick = () => tarefa(async () => { await recarregar(); await mapaCarregar(true); mapaMonta(); });
