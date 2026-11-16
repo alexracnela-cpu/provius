@@ -42,17 +42,26 @@ function criaVisor({ area, canvas, zoom, pags, pinfo, pant, ppro, menos, mais, a
 
 // janela de PDF (qualquer arquivo do processo)
 let VJ = null;
-async function verArquivo(arq, titulo) {
-  if (!arq) { toast('Arquivo não encontrado.', true); return; }
-  if (!/\.pdf$/i.test(arq.caminho)) { abrirNovaAba(arq.caminho); return; }
+function vjPreparar() {
   if (!VJ) {
     VJ = criaVisor({ area: '#mp-area', canvas: '#mp-cv', zoom: '#mp-z', pags: '#mp-pags', pinfo: '#mp-pinfo', pant: '#mp-pant', ppro: '#mp-ppro', menos: '#mp-menos', mais: '#mp-mais' });
     $('#mp-baixar').onclick = () => baixarBlob(VJ.nome, new Blob([VJ.bytes], { type: 'application/pdf' }));
     $('#mp-print').onclick = () => abrirBlob(new Blob([VJ.bytes], { type: 'application/pdf' }));
   }
+}
+async function verArquivo(arq, titulo) {
+  if (!arq) { toast('Arquivo não encontrado.', true); return; }
+  if (!/\.pdf$/i.test(arq.caminho)) { abrirNovaAba(arq.caminho); return; }
+  vjPreparar();
   $('#mp-tit').textContent = titulo || arq.nome; $('#mp-fonte').textContent = (arq.nome || '') + (arq.por_nome ? ' · enviado por ' + arq.por_nome + ' em ' + dataHora(arq.em) : '');
   abreModal('#modal-pdf'); VJ.limpa();
   await tarefa(async () => VJ.abrir(await bytesDe(arq.caminho), arq.nome));
+}
+// mesma janela, para um PDF gerado na hora (bytes já prontos)
+async function verPdfBytes(bytes, nome, titulo, fonte) {
+  vjPreparar(); $('#mp-tit').textContent = titulo || nome; $('#mp-fonte').textContent = fonte || '';
+  abreModal('#modal-pdf'); VJ.limpa();
+  await tarefa(async () => VJ.abrir(bytes, nome));
 }
 
 // ---------- editor de plaquetas ----------
@@ -152,7 +161,12 @@ async function edGerar() {
 // ---------- carta de envio à AGEMAN ----------
 let _logoML = null;
 async function logoML() { if (!_logoML) _logoML = new Uint8Array(await (await fetch('assets/logo-manaus-luz.png')).arrayBuffer()); return _logoML; }
-async function gerarCarta(sel) {
+// campos da carta: os da janela da carta ou, com padrao=true, os valores padrão dela (para recriar cartas antigas)
+function cartaCampos(padrao) {
+  const v = id => padrao ? $(id).defaultValue : $(id).value;
+  return { num: $('#ct-num').value, data: $('#ct-data').value, dest: v('#ct-dest'), att: v('#ct-att'), attc: v('#ct-attc'), ass: v('#ct-ass'), ref: v('#ct-ref'), link: $('#ct-link').value, nome: v('#ct-nome'), cargo: v('#ct-cargo') };
+}
+async function gerarCarta(sel, c = cartaCampos()) {
   const { PDFDocument, StandardFonts, rgb } = PDFLib; const pdf = await PDFDocument.create();
   const F = await pdf.embedFont(StandardFonts.Helvetica), FB = await pdf.embedFont(StandardFonts.HelveticaBold);
   const logo = await pdf.embedPng(await logoML()), lr = logo.height / logo.width;
@@ -160,7 +174,7 @@ async function gerarCarta(sel) {
   const corta = (t, f, s, max) => { t = String(t); if (f.widthOfTextAtSize(t, s) <= max) return t; while (t.length && f.widthOfTextAtSize(t + '…', s) > max) t = t.slice(0, -1); return t + '…'; };
   const quebra = (t, f, s, max) => { const out = []; String(t).split('\n').forEach(par => { let l = ''; par.split(' ').forEach(w => { const tt = l ? l + ' ' + w : w; if (f.widthOfTextAtSize(tt, s) > max && l) { out.push(l); l = w } else l = tt }); out.push(l) }); return out; };
   const MES = MESES.map(m => m[0].toUpperCase() + m.slice(1));
-  const [y0, m0, d0] = ($('#ct-data').value || hojeISO()).split('-'); const dataExt = `Manaus, ${d0} de ${MES[+m0 - 1]} de ${y0}`;
+  const [y0, m0, d0] = ((c.data || '') || hojeISO()).split('-'); const dataExt = `Manaus, ${d0} de ${MES[+m0 - 1]} de ${y0}`;
   let pg, y;
   const nova = () => {
     pg = pdf.addPage([W, H]); const ww = 380; pg.drawImage(logo, { x: (W - ww) / 2, y: H / 2 - ww * lr / 2 - 20, width: ww, height: ww * lr, opacity: .07 });
@@ -170,10 +184,10 @@ async function gerarCarta(sel) {
   const txt = (t, { f = F, s = sz, x = M, c = pr } = {}) => pg.drawText(t, { x, y, size: s, font: f, color: c });
   const par = (rot, t) => { const rw = rot ? FB.widthOfTextAtSize(rot + ' ', sz) : 0; quebra(t, F, sz, W - 2 * M - rw).forEach((l, i) => { if (i === 0 && rot) { txt(rot, { f: FB }); txt(l, { x: M + rw }) } else txt(l, { x: i === 0 ? M + rw : M }); y -= 14 }) };
   nova();
-  txt(dataExt, { x: W - M - F.widthOfTextAtSize(dataExt, sz) }); y -= 14; txt($('#ct-num').value, { f: FB }); y -= 34;
-  txt('À '); txt($('#ct-dest').value + ',', { f: FB, x: M + F.widthOfTextAtSize('À ', sz) }); y -= 26;
-  txt('Att.: '); txt($('#ct-att').value, { f: FB, x: M + F.widthOfTextAtSize('Att.: ', sz) }); y -= 13; txt($('#ct-attc').value); y -= 24;
-  par('Assunto:', $('#ct-ass').value); y -= 8; par('Referência:', $('#ct-ref').value); txt('Prezados Senhores,'); y -= 24;
+  txt(dataExt, { x: W - M - F.widthOfTextAtSize(dataExt, sz) }); y -= 14; txt((c.num || ''), { f: FB }); y -= 34;
+  txt('À '); txt((c.dest || '') + ',', { f: FB, x: M + F.widthOfTextAtSize('À ', sz) }); y -= 26;
+  txt('Att.: '); txt((c.att || ''), { f: FB, x: M + F.widthOfTextAtSize('Att.: ', sz) }); y -= 13; txt((c.attc || '')); y -= 24;
+  par('Assunto:', (c.ass || '')); y -= 8; par('Referência:', (c.ref || '')); txt('Prezados Senhores,'); y -= 24;
   txt('Encaminhamos os seguintes AS Builts dos Projetos:'); y -= 14;
   const cols = [{ t: 'Nº DO PROJETO', w: 78 }, { t: 'LOGRADOURO', w: 225 }, { t: 'BAIRRO', w: 155 }, { t: 'TOTAL', w: 33 }], rh = 15, fs = 8;
   const cabT = () => { let x = M; pg.drawRectangle({ x: M, y: y - rh + 3, width: 491, height: rh, color: verde }); cols.forEach(c => { const w = FB.widthOfTextAtSize(c.t, fs); pg.drawText(c.t, { x: x + (c.w - w) / 2, y: y - rh + 7.5, size: fs, font: FB, color: rgb(1, 1, 1) }); x += c.w }); y -= rh; };
@@ -187,11 +201,11 @@ async function gerarCarta(sel) {
   });
   pg.drawRectangle({ x: M, y: y + 3, width: 491, height: (n0 + 1) * rh, borderColor: borda, borderWidth: .6 });
   y -= 22; if (y < 200) nova();
-  txt('E o link para acesso:'); y -= 24; const lk = $('#ct-link').value.trim() || '(link não informado)';
+  txt('E o link para acesso:'); y -= 24; const lk = (c.link || '').trim() || '(link não informado)';
   quebra(lk, F, sz, W - 2 * M).forEach(l => { txt(l, { c: rgb(.02, .39, .76) }); pg.drawLine({ start: { x: M, y: y - 1.5 }, end: { x: M + F.widthOfTextAtSize(l, sz), y: y - 1.5 }, thickness: .6, color: rgb(.02, .39, .76) }); y -= 14 }); y -= 14;
   quebra('Sem mais, por esta nos colocamos à disposição de quaisquer esclarecimentos que se fizerem necessários.', F, sz, W - 2 * M).forEach(l => { txt(l); y -= 14 });
   y = Math.min(y - 90, 190); if (y < 80) { nova(); y = H - 200; }
-  txt($('#ct-nome').value, { f: FB }); y -= 30; txt($('#ct-cargo').value);
+  txt((c.nome || ''), { f: FB }); y -= 30; txt((c.cargo || ''));
   pdf.getPages().forEach((p, i) => p.drawText(String(i + 1), { x: W / 2, y: 31, size: 9, font: F, color: cz }));
   return { bytes: await pdf.save(), tot, paginas: pdf.getPageCount() };
 }

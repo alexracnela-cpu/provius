@@ -199,7 +199,7 @@ function agAntDesenha() {
   $('#an-lista').innerHTML = f.slice(0, 200).map((l, i) => {
     const ps = l.ids.map(proc).filter(Boolean), tp = ps.reduce((a, d) => a + (d.total_pontos || 0), 0);
     const titulo = l.carta ? 'Carta ' + esc(l.carta) : l.provius ? 'Envio sem nº de carta' : 'Envio da planilha';
-    const bts = l.provius ? [l.cartaArq ? `<button type="button" class="btn peq" data-arq="${esc(l.cartaArq)}">📄 Carta</button>` : '', l.comprovante ? `<button type="button" class="btn peq" data-arq="${esc(l.comprovante)}">📎 Comprovante</button>` : '', l.link ? `<a class="btn peq" href="${esc(l.link)}" target="_blank" rel="noopener">🔗 Pasta</a>` : ''].join('') || '<span class="ajuda">sem carta, comprovante ou link guardados</span>' : '<span class="ajuda">Envio de antes do Provius: só a data veio da planilha.</span>';
+    const bts = l.provius ? [`<button type="button" class="btn peq" data-carta="${i}" title="${l.cartaArq ? 'A carta guardada no envio' : 'Sem carta guardada: o Provius monta de novo a partir do registro do envio'}">📄 Carta${l.cartaArq ? '' : ' (recriar)'}</button>`, l.comprovante ? `<button type="button" class="btn peq" data-arq="${esc(l.comprovante)}">📎 Comprovante</button>` : '', l.link ? `<a class="btn peq" href="${esc(l.link)}" target="_blank" rel="noopener">🔗 Pasta</a>` : ''].join('') : '<span class="ajuda">Envio de antes do Provius: só a data veio da planilha.</span>';
     return `<details class="ag-lote${l.desfeito ? ' desf' : ''}"${i === 0 ? ' open' : ''}>
       <summary><span class="ag-l1"><b class="nn">${titulo}</b><span>${dataBR(l.data)}${l.provius ? ' às ' + new Date(l.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}</span>${l.por ? `<span>por <b>${esc(l.por)}</b></span>` : ''}</span>
         <span class="ag-l2"><span class="contador">${l.ids.length} processo${l.ids.length > 1 ? 's' : ''}</span><span class="contador">${fmt(tp)} pontos</span>${l.desfeito ? '<span class="pill dev" style="margin:0">Envio desfeito</span>' : l.desfeitos.length ? '<span class="pill dias" style="margin:0">' + l.desfeitos.length + ' desfeito' + (l.desfeitos.length > 1 ? 's' : '') + '</span>' : ''}</span></summary>
@@ -209,7 +209,8 @@ function agAntDesenha() {
           <td class="ag-arqs" style="text-align:right">${d.tipo === 'R' ? '' : `<button type="button" class="link-pdf" data-tc="${d.id}">Tabela de carga</button> · `}<button type="button" class="link-pdf" data-det="${d.id}">ver processo</button></td></tr>`).join('')}</tbody></table></div>
       </div></details>`;
   }).join('') + (f.length > 200 ? `<p class="ajuda" style="padding:12px 16px;margin:0">Mostrando 200 de ${fmt(f.length)} envios. Use o ano ou a busca para achar os outros.</p>` : '');
-  $$('#an-lista [data-arq]').forEach(b => b.onclick = () => abrirNovaAba(b.dataset.arq));
+  $$('#an-lista [data-arq]').forEach(b => b.onclick = () => verArquivo({ caminho: b.dataset.arq, nome: b.dataset.arq.split('/').pop() }, 'Comprovante do envio'));
+  $$('#an-lista [data-carta]').forEach(b => b.onclick = () => agCartaVer(f[+b.dataset.carta]));
   $$('#an-lista [data-det]').forEach(b => b.onclick = () => detalhe(+b.dataset.det));
   $$('#an-lista [data-tc]').forEach(b => b.onclick = () => tcPdfDoProcesso(+b.dataset.tc));
   $$('#an-lista [data-desf]').forEach(b => b.onclick = async () => {
@@ -220,4 +221,15 @@ function agAntDesenha() {
     toast('Envio desfeito · ' + nums.length + ' processo' + (nums.length > 1 ? 's voltaram' : ' voltou') + ' para a lista de prontos');
     HI.ok = false; await recarregar(); agAntCarregar(true);
   });
+}
+
+// carta de um envio anterior: a guardada no envio ou, se não foi guardada, recriada com o nº, a data, o link e os processos do lote
+async function agCartaVer(l) {
+  const num = l.carta || 's/nº', nome = 'carta-' + num.replace(/\W+/g, '-') + '.pdf';
+  if (l.cartaArq) { verArquivo({ caminho: l.cartaArq, nome, por_nome: l.por, em: l.em }, 'Carta ' + num); return; }
+  const ps = l.ids.map(id => D.find(d => d.id === id)).filter(Boolean).sort((a, b) => String(a.numero).localeCompare(String(b.numero), 'pt-BR', { numeric: true }));
+  if (!ps.length) { toast('Os processos deste envio não foram encontrados.', true); return; }
+  const r = await tarefa(() => gerarCarta(ps, { ...cartaCampos(true), num: l.carta || '', data: l.data, link: l.link || '' })); if (!r) return;
+  verPdfBytes(r.bytes, nome, 'Carta ' + num + ' (recriada)',
+    'A carta não foi guardada neste envio: montada agora com o nº, a data, o link e os ' + ps.length + ' processos do registro. Destinatário, assunto e assinatura são os padrão da carta' + (l.link ? '.' : '; o envio não tem link guardado.'));
 }
