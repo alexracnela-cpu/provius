@@ -774,3 +774,16 @@ td input[type=number]{width:100px;text-align:right;font-family:var(--f-num)}
 .mp-cor button[aria-pressed="true"]{background:var(--azul-bg);color:var(--azul)}
 .mp-cor-dica{margin:6px 0 0;font-size:12.5px}
 .mp-leg-i.sem-cor i{opacity:.35;height:3px}
+
+/* Botão do Mapa em destaque no cabeçalho (16/11/2026) */
+:root{--mapa-bt:#2f7a4a;--mapa-bt-h:#25643c;--mapa-bt-t:#fff}
+:root[data-theme="dark"]{--mapa-bt:#4fb276;--mapa-bt-h:#6cc58d;--mapa-bt-t:#0b1e12}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--mapa-bt:#4fb276;--mapa-bt-h:#6cc58d;--mapa-bt-t:#0b1e12}}
+.aba.ico.aba-mapa{gap:6px;padding:6px 14px 6px 10px;border-radius:18px;background:var(--mapa-bt);border-color:var(--mapa-bt);color:var(--mapa-bt-t);font-weight:700;box-shadow:0 2px 8px color-mix(in srgb,var(--mapa-bt) 40%,transparent);transition:background .15s,transform .15s,box-shadow .15s}
+.aba.ico.aba-mapa svg{width:18px;height:18px;stroke-width:2.1}
+.aba.ico.aba-mapa:hover{background:var(--mapa-bt-h);border-color:var(--mapa-bt-h);color:var(--mapa-bt-t);transform:translateY(-1px);box-shadow:0 4px 12px color-mix(in srgb,var(--mapa-bt) 50%,transparent)}
+.aba.ico.aba-mapa[aria-selected="true"]{background:var(--mapa-bt);border-color:var(--mapa-bt);color:var(--mapa-bt-t);box-shadow:0 0 0 3px color-mix(in srgb,var(--mapa-bt) 30%,transparent)}
+@media (max-width:980px){
+  /* no celular a barra rola de lado: o Mapa fica sempre visível na ponta direita */
+  .aba.ico.aba-mapa{position:sticky;right:2px;z-index:2;box-shadow:-10px 0 10px -2px var(--sup,#fff),0 2px 8px color-mix(in srgb,var(--mapa-bt) 40%,transparent)}
+}
