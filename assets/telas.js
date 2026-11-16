@@ -229,9 +229,28 @@ function execIniciar() {
     $$('#x-arqs button').forEach(b => b.onclick = () => { $('#x-up')._arqs.splice(+b.dataset.i, 1); $('#x-up').dispatchEvent(new Event('mudou')); });
   });
   $$('input[name=x-sit]').forEach(r => r.onchange = execMostra); $$('input[name=x-cor]').forEach(r => r.onchange = execMostra);
-  $('#x-ver').onclick = () => verArquivo(ultimoArquivo(XE.p, 'projeto'), 'Projeto ' + XE.p.numero);
+  $('#x-ver').onclick = () => execVerProjeto(XE.p);
   $('#x-dev').onclick = () => abrirDevolver(XE.p, [1]);
   $('#x-salvar').onclick = () => execGravar(false); $('#x-ok').onclick = () => execGravar(true);
+}
+// PDF do projeto + Tabela de Carga do projeto, num PDF só (a partir da Execução a tabela vai junto)
+async function projetoComTabela(p) {
+  const proj = ultimoArquivo(p, 'projeto'), temTc = p.tipo !== 'R' && tcTemLinhas(p.tabela_carga);
+  if (!proj || !/\.pdf$/i.test(proj.caminho) || !temTc) return null;
+  const out = await PDFLib.PDFDocument.create(); out.setTitle('Projeto e tabela de carga ' + p.numero); out.setProducer('Provius');
+  const src = await PDFLib.PDFDocument.load(await bytesDe(proj.caminho), { ignoreEncryption: true });
+  (await out.copyPages(src, src.getPageIndices())).forEach(pg => out.addPage(pg));
+  const r = await gerarTabelaCarga(p, p.tabela_carga, { asbuilt: false, por: EU?.nome });
+  const tc = await PDFLib.PDFDocument.load(r.bytes);
+  (await out.copyPages(tc, tc.getPageIndices())).forEach(pg => out.addPage(pg));
+  return { proj, bytes: await out.save() };
+}
+async function execVerProjeto(p) {
+  const proj = ultimoArquivo(p, 'projeto'); if (!proj) { toast('Arquivo não encontrado.', true); return; }
+  if (p.tipo === 'R' || !tcTemLinhas(p.tabela_carga)) { verArquivo(proj, 'Projeto ' + p.numero); return; }
+  const r = await tarefa(() => projetoComTabela(p)); if (!r) return;
+  verPdfBytes(r.bytes, nomeProcesso(p) + ' - PROJETO E TABELA DE CARGA.pdf', 'Projeto ' + p.numero + ' + tabela de carga',
+    proj.nome + (proj.por_nome ? ' · enviado por ' + proj.por_nome + ' em ' + dataHora(proj.em) : '') + ' · tabela de carga do Provius no fim');
 }
 const naoAdq = p => !!p && p.tipo === 'R' && p.adquirido === false;   // R- não adquirido: pula o Cadastro e não vai à AGEMAN
 function execMostra() { const s = $('input[name=x-sit]:checked').value, c = $('input[name=x-cor]:checked').value; $('#x-parc-c').hidden = s !== 'parcial'; $('#x-cor-c').hidden = c !== 'sim'; $('#x-ok').textContent = s === 'parcial' ? 'Salvar execução parcial' : naoAdq(XE.p) ? 'Entregar para Projetos (não adquirido) →' : 'Entregar para Cadastro →'; }
@@ -244,10 +263,13 @@ async function execAbrir(idSel) {
   const p = await tarefa(() => carregarProcesso(XE.fila[XE.at].id)); if (!p) return; XE.p = p;
   $('#x-tit').textContent = p.numero; $('#x-sub').textContent = 'Recebido de Projetos em ' + dataBR(p.etapa_desde) + ' · há ' + diasDesde(p.etapa_desde) + ' dias';
   faixaDevolvido($('#x-dev-faixa'), p);
-  const proj = ultimoArquivo(p, 'projeto');
+  const proj = ultimoArquivo(p, 'projeto'), temTc = p.tipo !== 'R' && tcTemLinhas(p.tabela_carga);
   $('#x-resumo').innerHTML = [['Serviço', esc(p.tipo_servico || '—')], ['Logradouro', esc(p.logradouro)], ['Bairro / zona', esc((p.bairro || '') + ' · ' + (p.zona || ''))], ['Pontos', p.total_pontos],
-    ['Projeto', proj ? `<button class="link-pdf" type="button" id="x-link">${esc(proj.nome)}</button>` : 'sem PDF (histórico)']].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
+    ['Projeto', proj ? `<button class="link-pdf" type="button" id="x-link">${esc(proj.nome)}</button>` : 'sem PDF (histórico)'],
+    ...(temTc ? [['Tabela de carga', `<button class="link-pdf" type="button" id="x-tc">Ver tabela de carga</button>`]] : [])].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
   if (proj) $('#x-link').onclick = () => $('#x-ver').click(); $('#x-ver').disabled = !proj;
+  $('#x-ver').textContent = proj && temTc ? '📄 Ver projeto + tabela de carga' : '📄 Ver projeto';
+  if (temTc) $('#x-tc').onclick = () => tcPdfAbrir(p, p.tabela_carga, false);
   $('#x-obs-box').hidden = !p.obs_projetos; $('#x-obs').textContent = p.obs_projetos || '';
   const sit = p.exec_situacao || (p.ja_executado ? 'executado' : 'nao'); $$('input[name=x-sit]').forEach(r => r.checked = r.value === sit);
   $$('input[name=x-cor]').forEach(r => r.checked = r.value === (p.correcoes ? 'sim' : 'nao'));
