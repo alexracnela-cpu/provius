@@ -124,7 +124,17 @@ async function carregarProcesso(id) {
 // observações escritas em cada etapa (visíveis para todos os setores); `sem` = campo que está sendo editado na tela
 const OBS_ETAPAS = [['obs_pedido', 'Engenharia · Pedido / croqui'], ['obs_projetos', 'Projetos · Projeto'], ['exec_parcial', 'Engenharia · O que ficou faltando'], ['correcoes', 'Engenharia · Correções de campo'], ['obs_cadastro', 'Cadastro · Emplaquetamento'], ['obs_asbuilt', 'Projetos · As built']];
 const obsEtapasLista = (p, sem = []) => OBS_ETAPAS.filter(([c]) => !sem.includes(c) && String((p && p[c]) || '').trim());
-const obsEtapasHtml = (p, sem) => obsEtapasLista(p, sem).map(([c, k]) => `<div class="det-obs-i"><span>${k}</span><p>${esc(String(p[c]).trim())}</p></div>`).join('');
+// quem escreveu: gravado pelo banco em processos.obs_autor (desde 17/11/2026); nas antigas, quem entregou aquela etapa
+const OBS_ENTREGA = { obs_pedido: null, obs_projetos: 1, exec_parcial: 2, correcoes: 2, obs_cadastro: 3, obs_asbuilt: 4 };
+function obsAutor(p, c) {
+  const a = p.obs_autor && p.obs_autor[c];
+  if (a && a.nome) return `${esc(a.nome)}${a.em ? ' · ' + dataHora(a.em) : ''}`;
+  const ms = p.movimentos || [], e = OBS_ENTREGA[c];
+  const m = c === 'obs_pedido' ? ms.find(x => x.acao === 'criar') : ms.filter(x => (x.acao === 'entregar' || x.acao === 'concluir') && x.de_etapa === e).slice(-1)[0];
+  if (m && m.por_nome) return `${esc(m.por_nome)} · ${c === 'obs_pedido' ? 'cadastrou' : 'entregou'} em ${dataBR(m.em)}`;
+  return 'autor não registrado';
+}
+const obsEtapasHtml = (p, sem) => obsEtapasLista(p, sem).map(([c, k]) => `<div class="det-obs-i"><span>${k}<small>${obsAutor(p, c)}</small></span><p>${esc(String(p[c]).trim())}</p></div>`).join('');
 function obsEtapasEm(sel, p, sem) { const el = $(sel); if (!el) return; const h = obsEtapasHtml(p, sem); el.hidden = !h; el.innerHTML = h ? `<h4 class="obs-tit">Observações das etapas</h4>${h}` : ''; }
 const ultimoArquivo = (p, tipo) => (p.arquivos || []).filter(a => a.tipo === tipo).slice(-1)[0];
 
