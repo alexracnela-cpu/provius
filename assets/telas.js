@@ -170,7 +170,7 @@ async function projetosAbrir(idSel) {
   selectBairros($('#j-bairro'), p.bairro); $('#j-zona').textContent = p.zona || '';
   $$('input[name=j-exec]').forEach(r => r.checked = (r.value === 'sim') === !!p.ja_executado);
   $$('input[name=j-urg]').forEach(r => r.checked = (r.value === 'sim') === !!p.urgente);
-  $('#j-obsped-c').hidden = !p.obs_pedido; $('#j-obsped').textContent = p.obs_pedido || '';
+  obsEtapasEm('#j-obsped-c', p, ['obs_projetos']);
   potPreenche(p, 'j');
   $('#j-obs').value = p.obs_projetos || ''; $('#j-up')._limpa();
   const ja = p.arquivos.filter(a => a.tipo === 'projeto' && new Date(a.em) >= new Date(p.etapa_desde)).slice(-1)[0];
@@ -275,7 +275,7 @@ async function execAbrir(idSel) {
   if (proj) $('#x-link').onclick = () => $('#x-ver').click(); $('#x-ver').disabled = !proj;
   $('#x-ver').textContent = proj && temTc ? '📄 Ver projeto + tabela de carga' : '📄 Ver projeto';
   if (temTc) $('#x-tc').onclick = () => tcPdfAbrir(p, p.tabela_carga, false);
-  $('#x-obs-box').hidden = !p.obs_projetos; $('#x-obs').textContent = p.obs_projetos || '';
+  obsEtapasEm('#x-obs-box', p, ['exec_parcial', 'correcoes']);
   const sit = p.exec_situacao || (p.ja_executado ? 'executado' : 'nao'); $$('input[name=x-sit]').forEach(r => r.checked = r.value === sit);
   $$('input[name=x-cor]').forEach(r => r.checked = r.value === (p.correcoes ? 'sim' : 'nao'));
   $('#x-data').value = p.executado_em || hojeISO(); $('#x-equipe').value = p.equipe || ''; $('#x-parc').value = p.exec_parcial || ''; $('#x-cor-txt').value = p.correcoes || '';
@@ -326,6 +326,7 @@ async function cadAbrir(idSel) {
   $('#k-tit').textContent = p.numero; $('#k-sub').textContent = 'Recebido da Engenharia em ' + dataBR(p.etapa_desde) + (p.executado_em ? ' · executado em ' + dataBR(p.executado_em) : '');
   faixaDevolvido($('#k-dev-faixa'), p);
   $('#k-resumo').innerHTML = [['Serviço', esc(p.tipo_servico || '—')], ['Logradouro', esc(p.logradouro)], ['Bairro / zona', esc((p.bairro || '') + ' · ' + (p.zona || ''))], ['Pontos', p.total_pontos]].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
+  obsEtapasEm('#k-obs-box', p, ['obs_cadastro', 'correcoes']);
   $('#k-corr').textContent = p.correcoes || 'Sem correções. Executado conforme o projeto.';
   const pdfs = p.arquivos.filter(a => ['projeto', 'correcoes'].includes(a.tipo) && /\.pdf$/i.test(a.caminho)).reverse();
   $('#ed-base').innerHTML = pdfs.map(a => `<option value="${a.id}">${a.tipo === 'projeto' ? 'Projeto' : 'Correções'} · ${esc(a.nome)}</option>`).join('') || '<option value="">sem PDF</option>';
@@ -402,7 +403,7 @@ async function asbAbrir(idSel) {
   const pl = ultimoArquivo(p, 'plaquetas');
   $('#a-resumo').innerHTML = [['Serviço', esc(p.tipo_servico || '—')], ['Logradouro', esc(p.logradouro)], ['Bairro / zona', esc((p.bairro || '') + ' · ' + (p.zona || ''))], ['As Built com plaqueta', pl ? `<button class="link-pdf" type="button" id="a-link">${esc(pl.nome)}</button>` : 'sem PDF (histórico)']].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
   if (pl) $('#a-link').onclick = () => $('#v-area').scrollIntoView({ behavior: 'smooth' });
-  $('#a-obs-box').hidden = !p.obs_cadastro; $('#a-obs-cad').textContent = p.obs_cadastro || '';
+  obsEtapasEm('#a-obs-box', p, ['obs_asbuilt']);
   $('#a-hist').innerHTML = p.movimentos.map(m => `<li><span>${dataBR(m.em)}</span><b style="font-weight:500">${esc(m.por_nome || '')}: ${esc(textoMov(m))}</b></li>`).join('') || '<li><span></span><b style="font-weight:500">Histórico da planilha (sem movimentos registrados).</b></li>';
   $('#a-ok').textContent = naoAdq(p) ? 'Concluir processo (não adquirido, sem AGEMAN) ✓' : 'Concluir as built → pronto p/ AGEMAN';
   $('#a-obs').value = p.obs_asbuilt || ''; $('#a-up')._limpa();

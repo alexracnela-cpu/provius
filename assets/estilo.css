@@ -373,6 +373,13 @@ td input[type=number]{width:100px;text-align:right;font-family:var(--f-num)}
 .arq-lista small{margin-left:auto;color:var(--suave)}
 .det-sec{display:flex;flex-direction:column;gap:6px}
 .det-sec h4{margin:4px 0 0;font:600 12px var(--f-corpo);text-transform:uppercase;letter-spacing:.08em;color:var(--suave)}
+.det-obs-i{border-left:3px solid var(--azul);background:var(--azul-bg);border-radius:0 8px 8px 0;padding:7px 11px}
+.det-obs-i span{font-size:11.5px;font-weight:600;color:var(--azul)}
+.obs-etapas{display:flex;flex-direction:column;gap:6px;margin:0 0 16px}
+.secao>.obs-etapas{margin:0 16px 16px}
+.obs-etapas[hidden]{display:none}
+.obs-tit{margin:0;font:600 12px var(--f-corpo);text-transform:uppercase;letter-spacing:.08em;color:var(--suave)}
+.det-obs-i p{margin:2px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13.5px;line-height:1.45}
 .btn:disabled{opacity:.55;cursor:not-allowed}
 .toast.erro{background:var(--erro);color:#fff}
 

@@ -171,14 +171,16 @@ async function detalhe(id) {
   const passos = `<ol class="passos">${[1, 2, 3, 4, 5, 6].map(e => `<li class="${p.cancelado ? '' : e < p.etapa || (e === 6 && p.etapa === 6) ? 'feito' : e === p.etapa ? 'agora' : ''}"><span><b>${ETAPAS[e].setor} · ${ETAPAS[e].nome}</b><small>${e === p.etapa && e < 6 && !p.cancelado ? 'está aqui desde ' + dataBR(p.etapa_desde) : ''}</small></span></li>`).join('')}</ol>`;
   const arqs = p.arquivos.length ? `<div class="arq-lista" style="padding:0">${p.arquivos.map(a => `<button type="button" data-a="${a.id}"><b>${/\.pdf$/i.test(a.caminho) ? 'PDF' : 'FOTO'}</b>${esc(ROT_ARQ[a.tipo] || a.tipo)} · ${esc(a.nome || '')}<small>${esc(a.por_nome || '')} · ${dataBR(a.em)}</small></button>`).join('')}</div>` : '<p class="ajuda" style="margin:0">Sem arquivos (processo do histórico da planilha).</p>';
   const hist = p.movimentos.length ? `<ul class="hist" style="padding:0">${p.movimentos.map(m => `<li><span>${dataBR(m.em)}</span><b style="font-weight:500">${esc(m.por_nome || '')}: ${esc(textoMov(m))}</b></li>`).join('')}</ul>` : '<p class="ajuda" style="margin:0">Sem movimentos registrados (histórico da planilha).</p>';
-  $('#det-corpo').innerHTML = `<div class="resumo" style="padding:0">${info}</div>${p.cancelado ? `<p class="faixa-dev" style="margin:0"><b>CANCELADO</b> · ${esc(p.cancel_motivo || '')}${p.cancel_texto ? ': ' + esc(p.cancel_texto) : ''}</p>` : passos}<div class="det-sec"><h4>Arquivos</h4>${arqs}</div><div class="det-sec"><h4>Histórico</h4>${hist}</div>`;
+  // observações escritas em cada etapa (visíveis para todos os setores)
+  const obs = `<div class="det-sec det-obs"><h4>Observações</h4>${obsEtapasHtml(p) || '<p class="ajuda" style="margin:0">Nenhuma observação nas etapas.</p>'}</div>`;
+  $('#det-corpo').innerHTML = `<div class="resumo" style="padding:0">${info}</div>${p.cancelado ? `<p class="faixa-dev" style="margin:0"><b>CANCELADO</b> · ${esc(p.cancel_motivo || '')}${p.cancel_texto ? ': ' + esc(p.cancel_texto) : ''}</p>` : passos}${obs}<div class="det-sec det-arq"><h4>Arquivos</h4>${arqs}</div><div class="det-sec"><h4>Histórico</h4>${hist}</div>`;
   $$('#det-corpo [data-a]').forEach(b => b.onclick = () => verArquivo(p.arquivos.find(a => String(a.id) === b.dataset.a), p.numero));
   // tabela de carga (gerada na hora, a partir do que está gravado)
   const tcs = [[p.tabela_carga, false, 'do projeto'], [p.tabela_carga_asb, true, 'do as built']].filter(x => tcTemLinhas(x[0]));
   if (tcs.length) {
     const box = document.createElement('div'); box.className = 'arq-lista'; box.style.padding = '8px 0 0';
     box.innerHTML = tcs.map((x, i) => `<button type="button" data-tcd="${i}"><b>PDF</b>Tabela de carga ${x[2]}<small>gerada pelo Provius${x[0].por ? ' · ' + esc(x[0].por) : ''}${x[0].em ? ' · ' + dataBR(x[0].em) : ''}</small></button>`).join('');
-    $('#det-corpo .det-sec').appendChild(box);
+    $('#det-corpo .det-arq').appendChild(box);
     box.querySelectorAll('[data-tcd]').forEach(b => b.onclick = () => { const x = tcs[+b.dataset.tcd]; tcPdfAbrir(p, x[0], x[1], x[1] ? p.tabela_carga : null); });
   }
   const vm = document.createElement('div'); vm.className = 'det-mapa'; vm.innerHTML = '<button type="button" class="btn peq">🗺 Ver no mapa</button>'; vm.querySelector('button').onclick = () => mapaIrPara(p.id); $('#det-corpo').prepend(vm);   // traçado do projeto na aba Mapa

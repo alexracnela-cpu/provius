@@ -222,7 +222,7 @@
           <div class="campo"><span class="r">Prioridade</span><div class="seg urg"><label><input type="radio" name="j-urg" value="nao">Normal</label><label class="u"><input type="radio" name="j-urg" value="sim">🔴 Urgente</label></div></div>
           <div class="campo"><span class="r">Já executado?</span><div class="seg"><label><input type="radio" name="j-exec" value="nao">Não</label><label><input type="radio" name="j-exec" value="sim">Sim</label></div></div>
           <div class="campo" id="j-aq-c" hidden><span class="r">Aquisição (veio do croqui)</span><div class="zona on" id="j-aq"></div></div>
-          <div class="campo largo" id="j-obsped-c" hidden><span class="r">Observação da Engenharia</span><div class="zona on" id="j-obsped"></div></div>
+          <div class="campo largo obs-etapas" id="j-obsped-c" hidden></div>
         </div></section>
       <section class="secao tc-sec" id="j-sec-tc" hidden><h2>Tabela de carga <span class="tc-h2sub">o sistema calcula os totais, a perda do reator e os materiais</span>
           <span class="tc-bts"><button type="button" class="btn peq" id="j-tc-xl">⬇ Excel</button><button type="button" class="btn peq pri" id="j-tc-pdf">📄 PDF</button></span></h2>
@@ -270,7 +270,7 @@
       <div class="cab"><div><div class="etapa">Engenharia · Etapa 3 · Execução</div><h1 id="x-tit"></h1><p class="sub" id="x-sub"></p></div><button type="button" class="btn" id="x-ver">📄 Ver projeto</button></div>
       <div class="faixa-dev" id="x-dev-faixa" hidden></div>
       <section class="secao"><h2>Projeto para executar</h2><div class="resumo" id="x-resumo"></div>
-        <div class="correcao" style="background:var(--azul-bg)" id="x-obs-box" hidden><b style="color:var(--azul)">Observação de Projetos:</b> <span id="x-obs"></span></div></section>
+        <div class="obs-etapas" id="x-obs-box" hidden></div></section>
       <section class="secao"><h2>Execução</h2><div class="grade">
         <div class="campo largo"><span class="r">Situação <em>*</em></span><div class="seg"><label><input type="radio" name="x-sit" value="executado">Executado</label><label><input type="radio" name="x-sit" value="parcial">Parcial</label><label><input type="radio" name="x-sit" value="nao" checked>Ainda não</label></div></div>
         <div class="campo"><label class="r" for="x-data">Data da execução <em>*</em></label><input type="date" id="x-data"></div>
@@ -298,6 +298,7 @@
       <div class="cab"><div><div class="etapa">Setor de Cadastro · Etapa 4 · Emplaquetamento</div><h1 id="k-tit"></h1><p class="sub" id="k-sub"></p></div></div>
       <div class="faixa-dev" id="k-dev-faixa" hidden></div>
       <section class="secao"><h2>O que chegou da Engenharia</h2><div class="resumo" id="k-resumo"></div>
+        <div class="obs-etapas" id="k-obs-box" hidden></div>
         <div class="correcao"><b>Correções da Engenharia:</b> <span id="k-corr"></span></div></section>
       <section class="secao"><h2>Plaquetas
         <span class="vis" role="group" style="text-transform:none;letter-spacing:0"><button type="button" id="km-ed" aria-pressed="true">Marcar no PDF aqui</button><button type="button" id="km-up" aria-pressed="false">Baixar e enviar PDF</button></span></h2>
@@ -334,7 +335,7 @@
       <div class="cab"><div><div class="etapa">Setor de Projetos · Etapa 5 · As built</div><h1 id="a-tit"></h1><p class="sub">Voltou do Cadastro com as plaquetas</p><p class="trava" id="a-trava" hidden></p></div><div class="cab-bts"><button type="button" class="btn pri" id="a-assumir" hidden>Assumir edição</button></div></div>
       <div class="faixa-dev" id="a-dev-faixa" hidden></div>
       <section class="secao"><h2>O que chegou do Cadastro</h2><div class="resumo" id="a-resumo"></div>
-        <div class="correcao" style="background:var(--azul-bg)" id="a-obs-box" hidden><b style="color:var(--azul)">Observação do Cadastro:</b> <span id="a-obs-cad"></span></div></section>
+        <div class="obs-etapas" id="a-obs-box" hidden></div></section>
       <section class="secao"><h2>As Built com plaqueta</h2>
         <div class="ed-barra"><span class="ajuda" id="v-fonte"></span><span class="ed-ctl"><button type="button" class="btn peq" id="v-menos">−</button><span class="ajuda" id="v-z" style="min-width:42px;text-align:center">100%</span><button type="button" class="btn peq" id="v-mais">+</button><button type="button" class="btn peq" id="v-ajusta">Ajustar</button><button type="button" class="btn peq" id="v-cheia">⤢ Tela cheia</button><button type="button" class="btn peq pri" id="v-print">🖨 Imprimir</button></span></div>
         <div class="ed-area" id="v-area" style="max-height:640px"><div class="ed-pag" style="cursor:default"><canvas id="v-cv"></canvas></div></div>

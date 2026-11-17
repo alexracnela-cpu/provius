@@ -121,6 +121,11 @@ async function carregarProcesso(id) {
   if (p.error) throw new Error(msgErro(p.error));
   return normMP({ ...p.data, arquivos: a.data || [], movimentos: m.data || [] });
 }
+// observações escritas em cada etapa (visíveis para todos os setores); `sem` = campo que está sendo editado na tela
+const OBS_ETAPAS = [['obs_pedido', 'Engenharia · Pedido / croqui'], ['obs_projetos', 'Projetos · Projeto'], ['exec_parcial', 'Engenharia · O que ficou faltando'], ['correcoes', 'Engenharia · Correções de campo'], ['obs_cadastro', 'Cadastro · Emplaquetamento'], ['obs_asbuilt', 'Projetos · As built']];
+const obsEtapasLista = (p, sem = []) => OBS_ETAPAS.filter(([c]) => !sem.includes(c) && String((p && p[c]) || '').trim());
+const obsEtapasHtml = (p, sem) => obsEtapasLista(p, sem).map(([c, k]) => `<div class="det-obs-i"><span>${k}</span><p>${esc(String(p[c]).trim())}</p></div>`).join('');
+function obsEtapasEm(sel, p, sem) { const el = $(sel); if (!el) return; const h = obsEtapasHtml(p, sem); el.hidden = !h; el.innerHTML = h ? `<h4 class="obs-tit">Observações das etapas</h4>${h}` : ''; }
 const ultimoArquivo = (p, tipo) => (p.arquivos || []).filter(a => a.tipo === tipo).slice(-1)[0];
 
 // trava de edição: quem está mexendo no processo (vale 30 minutos sem atividade)
