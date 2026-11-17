@@ -1,0 +1,82 @@
+/* PROVIUS · tema de Réveillon (liga de 26/12 a 06/01; ver reveillon.js) */
+:root.reveillon{--rv-ouro:#e8b931;--rv-ouro2:#f6d77a;--rv-noite:#0b1f4a;--rv-prata:#cfd8e3}
+
+/* fundo: brilho dourado no alto */
+.reveillon #fundo::after{content:"";position:absolute;inset:0;background:radial-gradient(120% 55% at 50% -10%,rgba(232,185,49,.14),transparent 60%),radial-gradient(90% 40% at 50% 110%,rgba(11,31,74,.25),transparent 60%)}
+
+/* fogos e confete: atrás do conteúdo, por cima da foto de fundo */
+#rv-fogos{position:fixed;inset:0;z-index:-1;pointer-events:none;width:100%;height:100%}
+
+/* rodapé: balões 2027 à esquerda, taças e garrafa à direita */
+#rv-chao{position:fixed;left:0;right:0;bottom:0;height:170px;z-index:-1;pointer-events:none}
+#rv-chao svg{position:absolute;bottom:0}
+#rv-chao .baloes{left:1.2%;height:160px;animation:rv-flutua 5s ease-in-out infinite}
+#rv-chao .tacas{right:1.5%;height:120px}
+@keyframes rv-flutua{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@media (max-width:700px){#rv-chao{height:100px}#rv-chao .baloes{height:92px}#rv-chao .tacas{height:70px}}
+
+/* varal de luzes douradas na borda do cabeçalho */
+#rv-luzes{position:absolute;left:0;right:0;bottom:-13px;height:22px;pointer-events:none;overflow:visible;z-index:1}
+#rv-luzes svg{display:block;width:100%;height:22px;overflow:visible}
+#rv-luzes:empty{display:none}
+#rv-luzes .lamp{animation:rv-pisca 1.8s ease-in-out infinite}
+#rv-luzes .lamp.b{animation-delay:.6s}
+#rv-luzes .lamp.c{animation-delay:1.2s}
+@keyframes rv-pisca{0%,100%{opacity:1;filter:drop-shadow(0 0 4px currentColor)}50%{opacity:.35;filter:none}}
+
+/* estrelas e serpentinas penduradas nas laterais (só em telas largas) */
+#rv-estrelas{position:fixed;top:0;left:0;right:0;height:0;z-index:-1;pointer-events:none}
+#rv-estrelas .pend{position:absolute;top:0;transform-origin:50% 0;animation:rv-balanca 4s ease-in-out infinite}
+#rv-estrelas .pend:nth-child(2n){animation-delay:-1.3s;animation-duration:5s}
+#rv-estrelas .pend:nth-child(3n){animation-delay:-2.6s}
+#rv-estrelas .brilho{animation:rv-gira 6s linear infinite;transform-box:fill-box;transform-origin:center}
+@keyframes rv-balanca{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(6deg)}}
+@keyframes rv-gira{to{transform:rotate(360deg)}}
+@media (max-width:1399px){#rv-estrelas{display:none}}
+
+/* chapéu de festa no logo, na caixa de entrada e no avatar */
+.reveillon .marca,.reveillon .acesso-cx{position:relative}
+.rv-chapeu{position:absolute;pointer-events:none;transform:rotate(-14deg);transform-origin:50% 100%;z-index:2}
+.reveillon .topo-in{padding-top:16px;padding-bottom:16px}
+.marca .rv-chapeu{width:22px;left:3px;top:-19px}
+.acesso-cx .rv-chapeu{width:30px;left:calc(50% - 132px);top:2px}
+.reveillon .avatar{position:relative;overflow:visible}
+.reveillon .avatar::before{content:"";position:absolute;width:20px;height:24px;left:4px;top:-17px;transform:rotate(-14deg);background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 48'%3E%3Cpath d='M20 6 L36 44 H4Z' fill='%230b1f4a'/%3E%3Cpath d='M12 25 L28 25 M9 33 L31 33 M15 17 L25 17' stroke='%23e8b931' stroke-width='3'/%3E%3Crect x='2' y='41' width='36' height='6' rx='3' fill='%23e8b931'/%3E%3Ccircle cx='20' cy='5' r='5' fill='%23f6d77a'/%3E%3C/svg%3E") center/contain no-repeat;pointer-events:none}
+
+/* estrela dourada no canto dos cartões das etapas */
+.reveillon .est::after{content:"";position:absolute;top:-9px;right:-6px;width:26px;height:26px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Cpath d='M13 1 L16 9.5 L25 10 L18 15.5 L20.5 24.5 L13 19.3 L5.5 24.5 L8 15.5 L1 10 L10 9.5Z' fill='%23e8b931' stroke='%23b98a12' stroke-width='1'/%3E%3Cpath d='M13 5 L14.6 10.6' stroke='%23fff' stroke-width='1.4' stroke-linecap='round' opacity='.7'/%3E%3C/svg%3E") center/contain no-repeat;pointer-events:none;animation:rv-pisca-est 3s ease-in-out infinite}
+.reveillon .est:nth-child(2n)::after{animation-delay:-1s}.reveillon .est:nth-child(3n)::after{animation-delay:-2s}
+@keyframes rv-pisca-est{0%,100%{transform:scale(1) rotate(0)}50%{transform:scale(1.15) rotate(12deg)}}
+
+/* mensagem e contagem na tela de entrada */
+.rv-msg{align-self:center;text-align:center;font:700 15px var(--f-corpo);color:#b98a12;margin:-4px 0 2px}
+.rv-msg small{display:block;font-weight:500;font-size:12.5px;color:var(--suave);margin-top:2px}
+:root[data-theme="dark"] .rv-msg{color:var(--rv-ouro2)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .rv-msg{color:var(--rv-ouro2)}}
+
+/* caixa de entrada com faixa dourada e borda de festa */
+.reveillon .acesso-cx{background-image:repeating-linear-gradient(-45deg,var(--rv-ouro) 0 10px,var(--rv-noite) 10px 20px,var(--rv-prata) 20px 30px,var(--rv-noite) 30px 40px);background-size:100% 7px;background-repeat:no-repeat;background-color:var(--sup);padding-top:30px;overflow:visible;border-color:rgba(232,185,49,.6)}
+
+/* botão principal da entrada em azul-noite com dourado */
+.reveillon .acesso-cx .btn.pri{background:var(--rv-noite);border-color:var(--rv-ouro);color:var(--rv-ouro2)}
+
+/* contagem no menu do usuário */
+.rv-conta{margin:2px 4px 4px;padding:6px 10px;border-radius:6px;font:600 13px var(--f-corpo);color:#946c06;background:rgba(232,185,49,.14)}
+:root[data-theme="dark"] .rv-conta{color:var(--rv-ouro2);background:rgba(246,215,122,.1)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .rv-conta{color:var(--rv-ouro2);background:rgba(246,215,122,.1)}}
+
+/* botão de ligar/desligar no menu do usuário */
+.menu-caixa .item#rv-tog{display:flex;justify-content:space-between;align-items:center;gap:14px;white-space:nowrap}
+#menu-eu .menu-caixa:has(#rv-tog){min-width:260px}
+.menu-caixa .item#rv-tog span{color:var(--suave);font-size:12.5px}
+
+/* personagens: taças brindando na entrada, relógio espiando no "Aguardando você", espumante no 1º cartão */
+.rv-boneco{position:absolute;pointer-events:none;z-index:3;filter:drop-shadow(0 3px 4px rgba(0,0,0,.25))}
+.rv-boneco svg{display:block;width:100%;height:100%;overflow:visible}
+.reveillon .lado>.caixa{position:relative}
+.reveillon .lado>.caixa:has(>.rv-boneco){margin-top:58px}
+.rv-boneco-esteira{position:relative;height:0;margin-top:84px;z-index:2;--col:calc((100% - 40px) / 6)}
+@media (max-width:900px){.rv-boneco-esteira{--col:calc((100% - 16px) / 3)}}
+@media (max-width:520px){.rv-boneco-esteira{--col:calc((100% - 8px) / 2)}}
+
+@media (prefers-reduced-motion:reduce){#rv-luzes .lamp,#rv-estrelas .pend,#rv-estrelas .brilho,#rv-chao .baloes,.reveillon .est::after{animation:none}}
