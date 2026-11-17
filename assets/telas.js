@@ -61,15 +61,17 @@ function pedidoNumero() {
 }
 
 // ================= trava de edição (quem está mexendo no processo) =================
-// Ao abrir um processo na Tela 2 ele fica marcado no nome de quem abriu. Quem abrir depois vê "Em edição por …"
+// Ao abrir um processo na Tela 2 ou no As built ele fica marcado no nome de quem abriu. Quem abrir depois vê "Em edição por …"
 // e fica só em leitura. A marcação sai ao entregar, devolver, cancelar, trocar de processo ou de aba, fechar a
 // página, ou depois de 30 minutos sem mexer (a cada minuto com atividade ela é renovada).
-const TRAVA = { id: null, meu: false, timer: null, mexeu: false, token: null, n: 0, alvo: null };
+const TRAVA = { id: null, meu: false, timer: null, mexeu: false, token: null, n: 0, alvo: null, tela: null };
+// telas com trava: etapa da fila, estado da tela, como abrir e como mostrar o modo
+const TRAVA_TELAS = { projetos: { etapa: 1, st: () => PJ, abrir: id => projetosAbrir(id), modo: r => projetosModo(r), fila: () => projetosFila() }, asb: { etapa: 4, st: () => AB, abrir: id => asbAbrir(id), modo: r => asbModo(r), fila: () => asbFila() } };
 ['click', 'keydown', 'input', 'scroll', 'mousemove', 'touchstart'].forEach(ev => document.addEventListener(ev, () => { TRAVA.mexeu = true; }, { passive: true, capture: true }));
 function travaNoD(id, r) { const d = D.find(x => x.id === id); if (!d) return; d.editando_por = r?.por || null; d.editando_nome = r?.nome || null; d.editando_desde = r?.desde || null; d.editando_em = r?.em || null; }
-async function travaMarcar(id, assumir) {
+async function travaMarcar(id, assumir, tela = TELA) {
   if (SEM_TRAVA) return { meu: true };
-  const n = ++TRAVA.n; TRAVA.alvo = id;
+  const n = ++TRAVA.n; TRAVA.alvo = id; TRAVA.tela = tela;
   try {
     const { data: { session } } = await sb.auth.getSession(); TRAVA.token = session?.access_token || TRAVA.token;
     const r = await rpc('marcar_edicao', { p_id: id, p_assumir: !!assumir });
@@ -83,15 +85,16 @@ async function travaMarcar(id, assumir) {
   }
 }
 async function travaRenova() {
-  if (!TRAVA.meu || !TRAVA.id || !TRAVA.mexeu || TELA !== 'projetos') return;   // sem atividade, a marcação vence sozinha em 30 min
-  const id = TRAVA.id, r = await travaMarcar(id, false);
-  if (!r.meu && PJ.p && PJ.p.id === id) {
-    projetosModo(r); projetosFila();
-    toast(primeiroNome(r.nome) + ' assumiu a edição de ' + PJ.p.numero + '. O que você não salvou não foi gravado.', true);
+  const T = TRAVA_TELAS[TRAVA.tela];
+  if (!T || !TRAVA.meu || !TRAVA.id || !TRAVA.mexeu || TELA !== TRAVA.tela) return;   // sem atividade, a marcação vence sozinha em 30 min
+  const id = TRAVA.id, r = await travaMarcar(id, false, TRAVA.tela), st = T.st();
+  if (!r.meu && st.p && st.p.id === id) {
+    T.modo(r); T.fila();
+    toast(primeiroNome(r.nome) + ' assumiu a edição de ' + st.p.numero + '. O que você não salvou não foi gravado.', true);
   }
 }
 async function travaLiberar() {
-  const id = TRAVA.id, meu = TRAVA.meu; clearInterval(TRAVA.timer); TRAVA.n++; Object.assign(TRAVA, { id: null, meu: false, timer: null, alvo: null });
+  const id = TRAVA.id, meu = TRAVA.meu; clearInterval(TRAVA.timer); TRAVA.n++; Object.assign(TRAVA, { id: null, meu: false, timer: null, alvo: null, tela: null });
   if (!id || !meu || SEM_TRAVA) return; travaNoD(id, null);
   try { await rpc('liberar_edicao', { p_id: id }); } catch (e) { console.error(e); }
 }
@@ -100,16 +103,18 @@ window.addEventListener('pagehide', () => {
   if (!TRAVA.id || !TRAVA.meu || SEM_TRAVA || !TRAVA.token) return;
   try { fetch(CFG.SUPABASE_URL + '/rest/v1/rpc/liberar_edicao', { method: 'POST', keepalive: true, headers: { apikey: CFG.SUPABASE_CHAVE, Authorization: 'Bearer ' + TRAVA.token, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_id: TRAVA.id }) }); } catch (e) { }
 });
-window.addEventListener('pageshow', e => { if (e.persisted && TELA === 'projetos' && PJ.p) projetosAbrir(PJ.p.id); });
+window.addEventListener('pageshow', e => { const T = TRAVA_TELAS[TELA]; if (e.persisted && T && T.st().p) T.abrir(T.st().p.id); });
 // a cada 30 s atualiza na fila quem está mexendo em quê
 setInterval(async () => {
-  if (SEM_TRAVA || !EU || TELA !== 'projetos' || document.hidden) return;
-  const { data, error } = await sb.from('processos').select('id,editando_por,editando_nome,editando_desde,editando_em').eq('etapa', 1);
-  if (error || !data) return;
+  const T = TRAVA_TELAS[TELA];
+  if (SEM_TRAVA || !EU || !T || document.hidden) return;
+  const { data, error } = await sb.from('processos').select('id,editando_por,editando_nome,editando_desde,editando_em').eq('etapa', T.etapa);
+  if (error || !data || TRAVA_TELAS[TELA] !== T) return;
   data.forEach(x => { const d = D.find(y => y.id === x.id); if (d) Object.assign(d, x); });
-  projetosFila();
+  T.fila();
   // se eu estava só olhando e a outra pessoa saiu, o processo passa para mim
-  if (PJ.p && TRAVA.id === PJ.p.id && !TRAVA.meu && !travaAtiva(D.find(d => d.id === PJ.p.id))) { toast('O processo ' + PJ.p.numero + ' foi liberado. Agora você pode editar.'); projetosAbrir(PJ.p.id); }
+  const p = T.st().p;
+  if (p && TRAVA.id === p.id && !TRAVA.meu && !travaAtiva(D.find(d => d.id === p.id))) { toast('O processo ' + p.numero + ' foi liberado. Agora você pode editar.'); T.abrir(p.id); }
 }, 30000);
 const horaTrava = t => { if (!t) return ''; const d = new Date(t); return d.toDateString() === new Date().toDateString() ? d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : dataHora(t); };
 
@@ -361,14 +366,38 @@ function asbIniciar() {
   $('#a-addpot').onclick = () => { potLinha(50, '', 'a'); potSoma('a'); };
   $$('.a-mod').forEach(i => i.oninput = () => potSoma('a'));
   $('#a-pot-abre').onclick = () => asbPotEditar(!AB.potEd);
+  $('#a-assumir').onclick = async () => {
+    const p = AB.p, d = D.find(x => x.id === p?.id); if (!p) return;
+    const nome = primeiroNome(d?.editando_nome);
+    if (!confirm(`${nome} está editando o processo ${p.numero}.\n\nAssumir a edição? O que ${nome} ainda não salvou não será gravado, e fica registrado no histórico que você assumiu.`)) return;
+    ocupado(true); await travaMarcar(p.id, true, 'asb'); ocupado(false);
+    toast('Você assumiu a edição de ' + p.numero); asbAbrir(p.id);
+  };
+}
+function asbFila() {
+  $('#a-fila').innerHTML = AB.fila.map((p, i) => itemFila(D.find(d => d.id === p.id) || p, i, AB.at)).join('') || '<p class="vazio">Fila vazia.</p>';
+  $$('#a-fila .item').forEach(b => b.onclick = () => { AB.at = +b.dataset.i; asbAbrir(AB.fila[AB.at].id); });
+}
+// com a trava: "Você está editando" ou "Em edição por …" (só leitura, botões travados), como na Tela 2
+function asbModo(r) {
+  const eu = !!r.meu, el = $('#a-trava'), outro = esc(r.nome || 'outra pessoa');
+  $('#a-form').classList.toggle('so-leitura', !eu);
+  $$('#a-form input, #a-form select, #a-form textarea, #a-form button').forEach(x => { if (['a-assumir', 'a-link', 'a-ver-asb', 'a-tc-pdf', 'a-tc-xl', 'v-menos', 'v-mais', 'v-ajusta', 'v-cheia', 'v-print'].includes(x.id)) return; x.disabled = !eu; });
+  ['#a-canc', '#a-dev', '#a-salvar', '#a-ok'].forEach(b => $(b).title = eu ? '' : 'Processo em edição por ' + (r.nome || 'outra pessoa'));
+  $('#a-assumir').hidden = eu || SEM_TRAVA;
+  if (SEM_TRAVA) { el.hidden = true; return; }
+  el.hidden = false; el.className = 'trava ' + (eu ? 'eu' : 'outro');
+  el.innerHTML = eu ? `✎ Você está editando · desde ${horaTrava(r.desde)}` : `🔒 Em edição por <b>${outro}</b> desde ${horaTrava(r.desde)} · somente leitura`;
 }
 async function asbAbrir(idSel) {
   AB.fila = filaDe(4); const i = idSel ? AB.fila.findIndex(p => p.id === idSel) : AB.fila.findIndex(p => p.id === AB.p?.id); AB.at = Math.max(0, i);
   $('#a-form').hidden = !AB.fila.length; $('#a-vazio').hidden = !!AB.fila.length;
-  $('#a-fila').innerHTML = AB.fila.map((p, i) => itemFila(p, i, AB.at)).join('') || '<p class="vazio">Fila vazia.</p>';
-  $$('#a-fila .item').forEach(b => b.onclick = () => { AB.at = +b.dataset.i; asbAbrir(AB.fila[AB.at].id); });
-  if (!AB.fila.length) return;
-  const p = await tarefa(() => carregarProcesso(AB.fila[AB.at].id)); if (!p) return; AB.p = p;
+  const alvo = AB.fila[AB.at]?.id, seq = AB.seq = (AB.seq || 0) + 1;
+  if (TRAVA.id && TRAVA.id !== alvo) await travaLiberar();   // trocou de processo: solta o anterior
+  asbFila();
+  if (!AB.fila.length) { AB.p = null; return; }
+  const [p, trava] = await Promise.all([tarefa(() => carregarProcesso(alvo)), travaMarcar(alvo, false, 'asb')]); if (seq !== AB.seq || !p) return; AB.p = p;
+  asbFila();
   $('#a-tit').textContent = p.numero; faixaDevolvido($('#a-dev-faixa'), p);
   const pl = ultimoArquivo(p, 'plaquetas');
   $('#a-resumo').innerHTML = [['Serviço', esc(p.tipo_servico || '—')], ['Logradouro', esc(p.logradouro)], ['Bairro / zona', esc((p.bairro || '') + ' · ' + (p.zona || ''))], ['As Built com plaqueta', pl ? `<button class="link-pdf" type="button" id="a-link">${esc(pl.nome)}</button>` : 'sem PDF (histórico)']].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
@@ -385,6 +414,7 @@ async function asbAbrir(idSel) {
   if (jaAsb) $('#a-ver-asb').onclick = () => verArquivo(jaAsb, 'As built ' + p.numero);
   $('#a-sec-pot').hidden = p.tipo === 'R';   // R- usa os itens de reequilíbrio, não potências
   asbPotResumo(p); potPreenche(p, 'a'); asbPotEditar(false); tcTela('a', p); mapaBloco('a', p);
+  asbModo(trava);   // depois da tabela e do mapa: em só leitura, os botões deles também ficam travados
   AB.visor.limpa(); $('#v-fonte').textContent = pl ? 'Carregando…' : 'Sem PDF de plaquetas neste processo.';
   if (pl) tarefa(async () => { await AB.visor.abrir(await bytesDe(pl.caminho), pl.nome); $('#v-fonte').textContent = pl.nome + ' · enviado por ' + (pl.por_nome || '') + ' em ' + dataHora(pl.em); });
 }

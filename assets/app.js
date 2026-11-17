@@ -73,7 +73,7 @@ async function recarregar() {
   D = todos.map(normMP); cabFilas(); if (TELA === 'todos' && !$('#tela-todos').hidden) todosDesenha();
 }
 function abrirTela(t, recarregou) {
-  if (!pode(t)) t = 'todos'; if (t !== 'projetos') travaLiberar(); TELA = t;
+  if (!pode(t)) t = 'todos'; if (TRAVA.tela && t !== TRAVA.tela) travaLiberar(); TELA = t;
   $$('#abas .aba[data-tela]').forEach(a => a.setAttribute('aria-selected', a.dataset.tela === t));
   $('#menu-adm summary').classList.toggle('sel', !!$('#menu-adm .aba[aria-selected="true"]')); menusFechar();
   const sel = $('#abas .esteira-abas .aba[aria-selected="true"]'), nav = $('#abas');   // no celular, a etapa aberta fica visível na faixa
