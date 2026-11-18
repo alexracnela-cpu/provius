@@ -10,6 +10,8 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const fmt = n => Number(n || 0).toLocaleString('pt-BR');
 const hojeISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const dataBR = t => { if (!t) return ''; const s = String(t); const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s); if (m) return `${m[3]}/${m[2]}/${m[1]}`; return new Date(s).toLocaleDateString('pt-BR'); };
+// data com hora ("10/11/2026 às 14:32"); datas sem hora (AAAA-MM-DD) ficam só com a data
+const quando = t => { if (!t) return ''; return /^\d{4}-\d{2}-\d{2}$/.test(String(t)) ? dataBR(t) : dataHora(t); };
 const dataHora = t => t ? new Date(t).toLocaleDateString('pt-BR') + ' às ' + new Date(t).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
 const diasDesde = t => t ? Math.max(0, Math.floor((Date.now() - new Date(t).getTime()) / 864e5)) : null;
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];

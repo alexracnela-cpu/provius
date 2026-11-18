@@ -404,7 +404,7 @@ async function asbAbrir(idSel) {
   $('#a-resumo').innerHTML = [['Serviço', esc(p.tipo_servico || '—')], ['Logradouro', esc(p.logradouro)], ['Bairro / zona', esc((p.bairro || '') + ' · ' + (p.zona || ''))], ['As Built com plaqueta', pl ? `<button class="link-pdf" type="button" id="a-link">${esc(pl.nome)}</button>` : 'sem PDF (histórico)']].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
   if (pl) $('#a-link').onclick = () => $('#v-area').scrollIntoView({ behavior: 'smooth' });
   obsEtapasEm('#a-obs-box', p, ['obs_asbuilt']);
-  $('#a-hist').innerHTML = p.movimentos.map(m => `<li><span>${dataBR(m.em)}</span><b style="font-weight:500">${esc(m.por_nome || '')}: ${esc(textoMov(m))}</b></li>`).join('') || '<li><span></span><b style="font-weight:500">Histórico da planilha (sem movimentos registrados).</b></li>';
+  $('#a-hist').innerHTML = p.movimentos.map(m => `<li><span>${quando(m.em)}</span><b style="font-weight:500">${esc(m.por_nome || '')}: ${esc(textoMov(m))}</b></li>`).join('') || '<li><span></span><b style="font-weight:500">Histórico da planilha (sem movimentos registrados).</b></li>';
   $('#a-ok').textContent = naoAdq(p) ? 'Concluir processo (não adquirido, sem AGEMAN) ✓' : 'Concluir as built → pronto p/ AGEMAN';
   $('#a-obs').value = p.obs_asbuilt || ''; $('#a-up')._limpa();
   // o as built já enviado (salvo antes): mostra o arquivo, para não parecer que sumiu

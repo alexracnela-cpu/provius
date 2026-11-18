@@ -271,7 +271,8 @@ td input[type=number]{width:100px;text-align:right;font-family:var(--f-num)}
 
 /* ===== as built e AGEMAN ===== */
 .hist{list-style:none;margin:0;padding:12px 16px 16px;display:flex;flex-direction:column;gap:8px;font-size:13.5px}
-.hist li{display:grid;grid-template-columns:110px 1fr;gap:10px}
+.hist li{display:grid;grid-template-columns:150px 1fr;gap:10px}
+@media (max-width:600px){.hist li{grid-template-columns:1fr;gap:0}}
 .hist li span{color:var(--suave);font-variant-numeric:tabular-nums}
 .ag-tab{overflow-x:auto}
 .ag-tab table{min-width:560px}
