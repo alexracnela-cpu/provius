@@ -1,0 +1,36 @@
+# Mantém o banco do Provius acordado.
+# O plano gratuito do Supabase pausa o projeto depois de uns 7 dias sem uso,
+# e aí o site (e os links de envio nas cartas da AGEMAN) param de funcionar.
+# Este robô faz uma consulta pequena ao banco todo dia, para isso não acontecer.
+# Usa só a chave pública (a mesma de assets/config.js); não lê nenhum dado:
+# sem login, o banco devolve uma lista vazia, mas a consulta conta como uso.
+name: Manter o banco acordado
+
+on:
+  schedule:
+    - cron: '17 11 * * *'   # todo dia às 11h17 UTC (7h17 em Manaus)
+  workflow_dispatch:         # botão "Run workflow" para testar na hora
+
+jobs:
+  consulta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: assets/config.js
+          sparse-checkout-cone-mode: false
+      - name: Consulta ao banco
+        run: |
+          URL=$(grep -o 'SUPABASE_URL: *"[^"]*"' assets/config.js | cut -d'"' -f2)
+          CHAVE=$(grep -o 'SUPABASE_CHAVE: *"[^"]*"' assets/config.js | cut -d'"' -f2)
+          for tentativa in 1 2 3; do
+            CODIGO=$(curl -s -o /dev/null -w '%{http_code}' \
+              "$URL/rest/v1/processos?select=id&limit=1" \
+              -H "apikey: $CHAVE" -H "Authorization: Bearer $CHAVE")
+            echo "Tentativa $tentativa: HTTP $CODIGO"
+            if [ "$CODIGO" = "200" ]; then exit 0; fi
+            sleep 60
+          done
+          echo "::error::O banco não respondeu. Veja se o projeto foi pausado no painel do Supabase."
+          exit 1
