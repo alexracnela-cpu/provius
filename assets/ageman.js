@@ -2,7 +2,7 @@
 // "Novo lote": processos prontos (etapa 5), carta e registro do envio.
 // "Envios anteriores": os lotes já enviados, lidos dos movimentos (os envios feitos juntos viram um lote só,
 // como na tela Histórico) e, para os de antes do Provius, da data de envio da planilha.
-const AG = { sel: new Set(), carta: null, cartaPronta: null, vc: null, modo: 'lote', ant: null, ano: null };
+const AG = { sel: new Set(), carta: null, cartaPronta: null, vc: null, modo: 'lote', ant: null, ano: null, codigo: null, lotes: null };
 
 function agIniciar() {
   caixaPdf('#ag-arq', '#ag-up');
@@ -17,6 +17,8 @@ function agIniciar() {
   $('#ct-anexar').onclick = () => { if (!AG.carta) return; if (!$('#ct-link').value.trim()) { $('#ct-link').closest('.campo').classList.add('invalido'); toast('Cole o link de acesso antes de usar a carta', true); return; }
     $('#ag-of').value = $('#ct-num').value; $('#ag-data').value = $('#ct-data').value; AG.cartaPronta = { bytes: AG.carta, num: $('#ct-num').value, link: $('#ct-link').value.trim() };
     fechaModal('#modal-carta'); toast('Carta pronta. Ela é guardada junto com o registro do envio.'); };
+  $('#ct-link').addEventListener('input', loteDica);
+  $('#ct-link-provius').onclick = () => { $('#ct-link').value = loteLink(loteNovoCodigo()); loteDica(); cartaPrevia(); };
   $('#an-ano').onchange = () => { AG.ano = $('#an-ano').value; agAntDesenha(); };
   $('#an-busca').oninput = agAntDesenha;
 }
@@ -28,6 +30,7 @@ function agModo(m) {
 async function agAbrir() {
   if (!$('#ag-data').value) $('#ag-data').value = hojeISO();
   agModo(AG.modo);
+  if (AG.loteOk === undefined) { const t = await sb.rpc('lotes_resumo'); AG.loteOk = !t.error; }   // o link do lote só depois de rodar provius-link-lote.sql
   // próximo número de carta, a partir da última registrada
   const { data } = await sb.from('envios').select('numero_carta').not('numero_carta', 'is', null).order('id', { ascending: false }).limit(1);
   const u = data && data[0] && data[0].numero_carta;
@@ -71,7 +74,8 @@ async function abrirCarta() {
     const u = data && data[0] && /^(\d+)\/(\d{4})$/.exec(data[0].numero_carta), ano = new Date().getFullYear();
     $('#ct-num').value = u && +u[2] === ano ? String(+u[1] + 1).padStart(4, '0') + '/' + ano : ''; }
   if (!$('#ct-data').value) $('#ct-data').value = $('#ag-data').value || hojeISO();
-  abreModal('#modal-carta'); cartaPrevia();
+  if (!$('#ct-link').value.trim() && AG.loteOk) $('#ct-link').value = loteLink(loteNovoCodigo());   // padrão: o link do Provius
+  loteDica(); abreModal('#modal-carta'); cartaPrevia();
 }
 async function cartaPrevia() {
   const sel = filaDe(5).filter(d => AG.sel.has(d.id));
@@ -82,17 +86,78 @@ async function cartaPrevia() {
 async function registrarEnvio() {
   const ids = [...AG.sel]; if (!ids.length) { toast('Selecione pelo menos um processo', true); return; }
   const data = $('#ag-data').value; if (!data) { toast('Informe a data do envio', true); return; }
-  const comp = $('#ag-up')._arqs[0], carta = AG.cartaPronta;
+  const comp = $('#ag-up')._arqs[0], carta = AG.cartaPronta, numCarta = $('#ag-of').value.trim();
+  // sem link (envio registrado sem gerar a carta): o Provius cria o link do lote
+  let link = carta?.link || $('#ct-link').value.trim();
+  if (!link && AG.loteOk) link = loteLink(loteNovoCodigo());
+  const cod = loteCodigoDe(link);
+  // link do Provius: junta os PDFs (as built + tabela de carga) de cada processo antes de registrar
+  let prep = null;
+  if (cod) {
+    prep = await lotePreparar(ids); if (!prep) return;
+    if (prep.avisos.length && !confirm('Atenção no link do lote:\n\n' + prep.avisos.join('\n') + '\n\nRegistrar o envio mesmo assim?')) return;
+  }
   const r = await tarefa(async () => {
-    const pasta = 'envios/' + data.slice(0, 4);
-    const c = carta ? await enviarArquivo(pasta, 'carta', new File([carta.bytes], 'carta.pdf', { type: 'application/pdf' })) : null;
-    const k = comp ? await enviarArquivo(pasta, 'comprovante', comp) : null;
-    return rpc('registrar_envio', { p_ids: ids, p_carta: $('#ag-of').value.trim(), p_data: data, p_link: carta?.link || $('#ct-link').value.trim(), p_oficio: null, p_carta_caminho: c?.caminho || null, p_comprovante: k?.caminho || null });
+    let publicado = false;
+    if (prep) { await lotePublicar(cod, prep, numCarta, data); publicado = true; }
+    try {
+      const pasta = 'envios/' + data.slice(0, 4);
+      const c = carta ? await enviarArquivo(pasta, 'carta', new File([carta.bytes], 'carta.pdf', { type: 'application/pdf' })) : null;
+      const k = comp ? await enviarArquivo(pasta, 'comprovante', comp) : null;
+      return await rpc('registrar_envio', { p_ids: ids, p_carta: numCarta, p_data: data, p_link: link, p_oficio: null, p_carta_caminho: c?.caminho || null, p_comprovante: k?.caminho || null });
+    } catch (e) {   // o envio não foi registrado: desliga o link que acabou de ser criado
+      if (publicado) await sb.rpc('lote_desligar', { p_codigo: cod, p_motivo: 'Envio não registrado: ' + msgErro(e) });
+      throw e;
+    }
   });
   if (!r) return;
-  toast(ids.length + ' processo' + (ids.length > 1 ? 's' : '') + ' enviado' + (ids.length > 1 ? 's' : '') + ' à AGEMAN em ' + dataBR(data));
-  AG.sel.clear(); AG.cartaPronta = null; AG.ant = null; $('#ag-up')._limpa(); $('#ag-of').value = ''; $('#ct-num').value = ''; $('#ct-link').value = '';
+  toast(ids.length + ' processo' + (ids.length > 1 ? 's' : '') + ' enviado' + (ids.length > 1 ? 's' : '') + ' à AGEMAN em ' + dataBR(data) + (cod ? ' · link do lote no ar' : ''));
+  AG.sel.clear(); AG.cartaPronta = null; AG.ant = null; AG.codigo = null; AG.lotes = null; $('#ag-up')._limpa(); $('#ag-of').value = ''; $('#ct-num').value = ''; $('#ct-link').value = '';
   await recarregar(); agAbrir();
+}
+
+// ---------- link do lote: página pública lote.html?c=<código> com os PDFs congelados do envio ----------
+const LOTE_RE = /lote\.html\?(?:[^#]*&)?c=([A-Za-z0-9]{20,64})/;
+function loteNovoCodigo() {
+  const L = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789', a = new Uint8Array(24); crypto.getRandomValues(a);
+  return AG.codigo = [...a].map(b => L[b % L.length]).join('');   // 24 letras: impossível de adivinhar
+}
+const loteLink = c => new URL('lote.html?c=' + c, location.href.split(/[?#]/)[0]).href;
+const loteCodigoDe = link => LOTE_RE.exec(link || '')?.[1] || null;
+function loteDica() {
+  const v = $('#ct-link').value.trim(), meu = loteCodigoDe(v);
+  $('#ct-link-dica').textContent = meu ? 'Link do Provius: os PDFs do lote (as built + tabela de carga) ficam disponíveis nele quando o envio for registrado. Não vence.'
+    : v ? 'Link de fora do Provius (reserva): confira se a pasta tem todos os arquivos e está aberta para a AGEMAN.' : '';
+  $('#ct-link-provius').hidden = !!meu || !AG.loteOk;
+}
+// junta os PDFs de cada processo (o mesmo "Unido" da lista: as built + tabela de carga)
+async function lotePreparar(ids) {
+  const lista = filaDe(5).filter(d => ids.includes(d.id)), itens = [], avisos = [];
+  ocupado(true);
+  try {
+    for (const [i, d] of lista.entries()) {
+      toast(`Preparando o link do lote: ${i + 1} de ${lista.length} (${d.numero})…`);
+      try {
+        const r = await agUnido(d.id);
+        if (!r.bytes) { avisos.push('• ' + d.numero + ': sem as built e sem tabela de carga no Provius (fica fora do link)'); continue; }
+        if (r.faltou.length) avisos.push('• ' + d.numero + ': vai sem ' + r.faltou.join(' e '));
+        itens.push({ d, p: r.p, bytes: r.bytes });
+      } catch (e) { console.error(e); toast(d.numero + ': ' + msgErro(e), true); return null; }
+    }
+  } finally { ocupado(false); }
+  if (!itens.length) { toast('Nenhum processo selecionado tem PDF no Provius para o link. Use um link de fora (pasta do Drive).', true); return null; }
+  return { itens, avisos };
+}
+// envia os PDFs para envios/AAAA/lote-<código>/ (cópia fixa: mudanças depois do envio não alteram o link) e grava o lote
+async function lotePublicar(cod, prep, carta, data) {
+  const pasta = `envios/${data.slice(0, 4)}/lote-${cod}`, arqs = [];
+  for (const [i, it] of prep.itens.entries()) {
+    const caminho = `${pasta}/${String(i + 1).padStart(3, '0')}-${String(it.d.numero).replace(/[^A-Za-z0-9]+/g, '-')}.pdf`;
+    const { error } = await sb.storage.from(BUCKET).upload(caminho, new Blob([it.bytes], { type: 'application/pdf' }), { upsert: false, contentType: 'application/pdf' });
+    if (error) throw new Error('Não consegui guardar o PDF de ' + it.d.numero + ' para o link: ' + msgErro(error));
+    arqs.push({ ordem: i, processo_id: it.d.id, numero: it.d.numero, logradouro: it.d.logradouro, bairro: it.d.bairro || '', pontos: it.d.total_pontos || 0, caminho, nome: agNomeArq(it.p), tamanho: it.bytes.length });
+  }
+  await rpc('lote_publicar', { p_codigo: cod, p_carta: carta || null, p_data: data, p_arquivos: arqs });
 }
 
 // ---------- PDF unido: as built enviado + tabela de carga (uma página atrás da outra) ----------
@@ -151,9 +216,11 @@ async function agAntCarregar(forcar) {
       if (error) throw error; movs = movs.concat(data); if (data.length < N || movs.length >= 10000) break; de += N;
     }
     const e = await sb.from('envios').select('*').order('id', { ascending: false }).limit(2000);
-    return { movs, envios: e.error ? [] : e.data || [] };
+    const lt = await sb.rpc('lotes_resumo');   // links do lote (vazio se o SQL ainda não foi rodado)
+    return { movs, envios: e.error ? [] : e.data || [], lotes: lt.error ? [] : lt.data || [] };
   });
   if (!r) return;
+  AG.lotes = Object.fromEntries(r.lotes.map(x => [x.codigo, x]));
   // lotes registrados no Provius (mesma pessoa, mesmo minuto)
   const desf = r.movs.filter(m => m.acao === 'desfazer_envio');
   const lotes = histAgrupar(r.movs.filter(m => m.acao === 'enviar')).map(g => {
@@ -199,7 +266,7 @@ function agAntDesenha() {
   $('#an-lista').innerHTML = f.slice(0, 200).map((l, i) => {
     const ps = l.ids.map(proc).filter(Boolean), tp = ps.reduce((a, d) => a + (d.total_pontos || 0), 0);
     const titulo = l.carta ? 'Carta ' + esc(l.carta) : l.provius ? 'Envio sem nº de carta' : 'Envio da planilha';
-    const bts = l.provius ? [`<button type="button" class="btn peq" data-carta="${i}" title="${l.cartaArq ? 'A carta guardada no envio' : 'Sem carta guardada: o Provius monta de novo a partir do registro do envio'}">📄 Carta${l.cartaArq ? '' : ' (recriar)'}</button>`, l.comprovante ? `<button type="button" class="btn peq" data-arq="${esc(l.comprovante)}">📎 Comprovante</button>` : '', l.link ? `<a class="btn peq" href="${esc(l.link)}" target="_blank" rel="noopener">🔗 Pasta</a>` : ''].join('') : '<span class="ajuda">Envio de antes do Provius: só a data veio da planilha.</span>';
+    const bts = l.provius ? [`<button type="button" class="btn peq" data-carta="${i}" title="${l.cartaArq ? 'A carta guardada no envio' : 'Sem carta guardada: o Provius monta de novo a partir do registro do envio'}">📄 Carta${l.cartaArq ? '' : ' (recriar)'}</button>`, l.comprovante ? `<button type="button" class="btn peq" data-arq="${esc(l.comprovante)}">📎 Comprovante</button>` : '', agLinkBts(l, i)].join('') : '<span class="ajuda">Envio de antes do Provius: só a data veio da planilha.</span>';
     return `<details class="ag-lote${l.desfeito ? ' desf' : ''}"${i === 0 ? ' open' : ''}>
       <summary><span class="ag-l1"><b class="nn">${titulo}</b><span>${dataBR(l.data)}${l.provius ? ' às ' + new Date(l.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}</span>${l.por ? `<span>por <b>${esc(l.por)}</b></span>` : ''}</span>
         <span class="ag-l2"><span class="contador">${l.ids.length} processo${l.ids.length > 1 ? 's' : ''}</span><span class="contador">${fmt(tp)} pontos</span>${l.desfeito ? '<span class="pill dev" style="margin:0">Envio desfeito</span>' : l.desfeitos.length ? '<span class="pill dias" style="margin:0">' + l.desfeitos.length + ' desfeito' + (l.desfeitos.length > 1 ? 's' : '') + '</span>' : ''}</span></summary>
@@ -211,6 +278,13 @@ function agAntDesenha() {
   }).join('') + (f.length > 200 ? `<p class="ajuda" style="padding:12px 16px;margin:0">Mostrando 200 de ${fmt(f.length)} envios. Use o ano ou a busca para achar os outros.</p>` : '');
   $$('#an-lista [data-arq]').forEach(b => b.onclick = () => verArquivo({ caminho: b.dataset.arq, nome: b.dataset.arq.split('/').pop() }, 'Comprovante do envio'));
   $$('#an-lista [data-carta]').forEach(b => b.onclick = () => agCartaVer(f[+b.dataset.carta]));
+  $$('#an-lista [data-copiar]').forEach(b => b.onclick = async () => { try { await navigator.clipboard.writeText(f[+b.dataset.copiar].link); toast('Link copiado'); } catch (e) { prompt('Copie o link:', f[+b.dataset.copiar].link); } });
+  $$('#an-lista [data-deslig]').forEach(b => b.onclick = async () => {
+    const l = f[+b.dataset.deslig], cod = loteCodigoDe(l.link);
+    const motivo = prompt('Desligar o link do lote da carta ' + (l.carta || 's/nº') + '?\n\nQuem abrir o link verá que ele foi desligado e não conseguirá baixar os arquivos. Isso não desfaz o envio. Diga o motivo:', '');
+    if (motivo === null) return; if (!motivo.trim()) { toast('Diga o motivo para desligar o link', true); return; }
+    const r = await tarefa(() => rpc('lote_desligar', { p_codigo: cod, p_motivo: motivo.trim() }).then(() => true), 'Link desligado'); if (r) agAntCarregar(true);
+  });
   $$('#an-lista [data-det]').forEach(b => b.onclick = () => detalhe(+b.dataset.det));
   $$('#an-lista [data-tc]').forEach(b => b.onclick = () => tcPdfDoProcesso(+b.dataset.tc));
   $$('#an-lista [data-desf]').forEach(b => b.onclick = async () => {
@@ -221,6 +295,17 @@ function agAntDesenha() {
     toast('Envio desfeito · ' + nums.length + ' processo' + (nums.length > 1 ? 's voltaram' : ' voltou') + ' para a lista de prontos');
     HI.ok = false; await recarregar(); agAntCarregar(true);
   });
+}
+
+// botões do link do envio: o do Provius (abrir, copiar, acessos, desligar) ou a pasta de fora
+function agLinkBts(l, i) {
+  if (!l.link) return '';
+  const cod = loteCodigoDe(l.link), x = cod && AG.lotes ? AG.lotes[cod] : null;
+  if (!x) return `<a class="btn peq" href="${esc(l.link)}" target="_blank" rel="noopener">🔗 ${cod ? 'Link do lote' : 'Pasta'}</a>`;
+  const ac = `${fmt(x.aberturas)} abertura${x.aberturas === 1 ? '' : 's'} · ${fmt(x.downloads)} download${x.downloads === 1 ? '' : 's'}` + (x.ultimo_acesso ? ' · último em ' + dataHora(x.ultimo_acesso) : '');
+  if (!x.ativo) return `<span class="pill dev" style="margin:0" title="${esc((x.desligado_motivo || '') + (x.desligado_por_nome ? ' · ' + x.desligado_por_nome : ''))}">🔗 Link desligado${x.desligado_em ? ' em ' + dataBR(String(x.desligado_em).slice(0, 10)) : ''}</span><span class="ajuda">${ac}</span>`;
+  return `<a class="btn peq" href="${esc(l.link)}" target="_blank" rel="noopener" title="A página que a AGEMAN abre">🔗 Link do lote</a><button type="button" class="btn peq" data-copiar="${i}">📋 Copiar link</button>` +
+    (EU.admin ? `<button type="button" class="btn peq" data-deslig="${i}">⛔ Desligar link</button>` : '') + `<span class="ajuda" title="Aberturas e downloads da página do lote">${ac}</span>`;
 }
 
 // carta de um envio anterior: a guardada no envio ou, se não foi guardada, recriada com o nº, a data, o link e os processos do lote

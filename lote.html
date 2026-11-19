@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Manaus Luz · Projetos as built enviados à AGEMAN</title>
+<link rel="icon" type="image/png" href="assets/icone.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap">
+<style>
+:root{--bg:#f3f5f9;--papel:#fff;--tinta:#16202e;--suave:#5b6779;--linha:#dde3ec;--azul:#0b3a78;--azul-bg:#e4edf8;--laranja:#e8730c;--verde:#1d7a46;--verm:#b4302a;--verm-bg:#fbe9e7}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tinta);font:15px/1.45 Barlow,system-ui,sans-serif}
+main{max-width:980px;margin:0 auto;padding:24px 16px 48px}
+header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+header img{height:48px}
+header .t{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:24px;color:var(--azul);line-height:1.1}
+header .t small{display:block;font:500 14px Barlow,sans-serif;color:var(--suave)}
+.cx{background:var(--papel);border:1px solid var(--linha);border-radius:10px;overflow:hidden}
+.topo{display:flex;flex-wrap:wrap;gap:14px 28px;align-items:center;padding:16px 18px;border-bottom:1px solid var(--linha)}
+.topo .k{display:flex;flex-direction:column}
+.topo .k span{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--suave)}
+.topo .k b{font-family:'Barlow Condensed',sans-serif;font-size:22px;color:var(--azul)}
+.btn{font:600 14px Barlow,sans-serif;border:1px solid var(--linha);background:var(--papel);color:var(--azul);border-radius:7px;padding:7px 12px;cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--azul-bg)}
+.btn.pri{background:var(--azul);border-color:var(--azul);color:#fff}
+.btn.pri:hover{filter:brightness(1.12)}
+.btn:disabled{opacity:.55;cursor:wait}
+.topo .btn.pri{margin-left:auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:9px 14px;text-align:left;border-bottom:1px solid var(--linha);vertical-align:middle}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--suave);font-weight:600;background:#f8fafc}
+td.n{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+td.ac{text-align:right}
+tr:last-child td{border-bottom:0}
+.msg{padding:28px 20px;text-align:center;color:var(--suave)}
+.msg b{display:block;color:var(--tinta);font-size:18px;margin-bottom:6px}
+.msg.erro b{color:var(--verm)}
+.aviso{margin:12px 0 0;padding:10px 14px;border-radius:8px;background:var(--verm-bg);color:var(--verm);display:none}
+.aviso.ok{background:#e3f3ea;color:var(--verde)}
+footer{margin-top:16px;font-size:13px;color:var(--suave);text-align:center}
+@media (max-width:640px){
+  thead{display:none} tr{display:grid;grid-template-columns:1fr auto;padding:10px 14px;border-bottom:1px solid var(--linha);gap:2px 10px} td{border:0;padding:0}
+  td.n{grid-column:1} td.ac{grid-column:2;grid-row:1/span 3;align-self:center} td.lg,td.br,td.num{grid-column:1;text-align:left;color:var(--suave);font-size:14px}
+  td.num::after{content:' pontos'} .topo .btn.pri{margin-left:0;width:100%}
+}
+</style>
+</head>
+<body>
+<main>
+  <header><img src="assets/logo-manaus-luz.png" alt="Manaus Luz"><div class="t">Projetos as built enviados à AGEMAN<small>Contrato 012/2019 · Iluminação pública de Manaus</small></div></header>
+  <div class="cx" id="cx"><div class="msg" id="msg"><b>Abrindo…</b>Carregando a lista de arquivos.</div></div>
+  <p class="aviso" id="aviso" role="status"></p>
+  <footer>Cada PDF traz o as built e a tabela de carga do projeto, como foram enviados. Gerado pelo Provius · Manaus Luz.</footer>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="assets/config.js?v=2"></script>
+<script>
+(function () {
+  const $ = s => document.querySelector(s);
+  const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const fmt = n => Number(n || 0).toLocaleString('pt-BR');
+  const dataBR = t => t ? String(t).slice(0, 10).split('-').reverse().join('/') : '';
+  const tam = b => !b ? '' : b < 1048576 ? Math.max(1, Math.round(b / 1024)) + ' KB' : (b / 1048576).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' MB';
+  const msg = (tit, txt, erro) => { $('#cx').innerHTML = `<div class="msg${erro ? ' erro' : ''}"><b>${tit}</b>${txt}</div>`; };
+  const aviso = (t, ok) => { const a = $('#aviso'); a.textContent = t; a.className = 'aviso' + (ok ? ' ok' : ''); a.style.display = t ? 'block' : 'none'; };
+
+  const cod = (new URLSearchParams(location.search).get('c') || '').trim();
+  const CFG = window.PROVIUS_CONFIG || {};
+  if (!/^[A-Za-z0-9]{20,64}$/.test(cod)) { msg('Link incompleto', 'Confira se o endereço foi copiado inteiro da carta.', true); return; }
+  if (!window.supabase || !CFG.SUPABASE_URL) { msg('Não consegui abrir', 'Tente de novo em alguns minutos.', true); return; }
+  const sb = supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_CHAVE, { auth: { persistSession: false, autoRefreshToken: false } });
+  const BUCKET = 'provius';
+  let L = null;
+
+  async function bytes(caminho) {
+    const { data, error } = await sb.storage.from(BUCKET).download(caminho);
+    if (error) throw error;
+    return new Uint8Array(await data.arrayBuffer());
+  }
+  // devolve um texto quando quem hospeda a página trata o download de outro jeito (a simulação)
+  function salvar(nome, blob) {
+    if (window.LOTE_SALVAR) return window.LOTE_SALVAR(nome, blob);
+    const u = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = u; a.download = nome; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000);
+  }
+  // ZIP sem compressão (os PDFs já são comprimidos)
+  const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  const crc32 = b => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+  function zip(files) {
+    const enc = new TextEncoder(), partes = [], central = []; let off = 0;
+    for (const [nome, db] of files) {
+      const nb = enc.encode(nome), crc = crc32(db);
+      const h = new DataView(new ArrayBuffer(30)); h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint32(14, crc, true); h.setUint32(18, db.length, true); h.setUint32(22, db.length, true); h.setUint16(26, nb.length, true);
+      partes.push(new Uint8Array(h.buffer), nb, db);
+      const c = new DataView(new ArrayBuffer(46)); c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint32(16, crc, true); c.setUint32(20, db.length, true); c.setUint32(24, db.length, true); c.setUint16(28, nb.length, true); c.setUint32(42, off, true);
+      central.push(new Uint8Array(c.buffer), nb); off += 30 + nb.length + db.length;
+    }
+    const cs = central.reduce((a, b) => a + b.length, 0), e = new DataView(new ArrayBuffer(22)), n = files.length;
+    e.setUint32(0, 0x06054b50, true); e.setUint16(8, n, true); e.setUint16(10, n, true); e.setUint32(12, cs, true); e.setUint32(16, off, true);
+    return new Blob([...partes, ...central, new Uint8Array(e.buffer)], { type: 'application/zip' });
+  }
+
+  function desenha() {
+    const A = L.arquivos || [], pts = A.reduce((s, a) => s + (a.pontos || 0), 0);
+    if (!A.length) { msg('Lote sem arquivos', 'Os arquivos deste envio não estão mais disponíveis. Entre em contato com a Manaus Luz.', true); return; }
+    $('#cx').innerHTML = `<div class="topo">
+        <div class="k"><span>Carta</span><b>${esc(L.numero_carta || 's/nº')}</b></div>
+        <div class="k"><span>Data do envio</span><b>${dataBR(L.data_envio) || '—'}</b></div>
+        <div class="k"><span>Projetos</span><b>${fmt(A.length)}</b></div>
+        <div class="k"><span>Pontos</span><b>${fmt(pts)}</b></div>
+        <button type="button" class="btn pri" id="tudo">⬇ Baixar todos (ZIP)</button></div>
+      <table><thead><tr><th>Projeto</th><th>Logradouro</th><th>Bairro</th><th class="num">Pontos</th><th></th></tr></thead><tbody>
+      ${A.map((a, i) => `<tr><td class="n">${esc(a.numero || '')}</td><td class="lg">${esc(a.logradouro || '')}</td><td class="br">${esc(a.bairro || '')}</td><td class="num">${fmt(a.pontos)}</td>
+        <td class="ac"><button type="button" class="btn" data-i="${i}" title="${esc(a.nome)}">⬇ PDF${a.tamanho ? ' · ' + tam(a.tamanho) : ''}</button></td></tr>`).join('')}
+      </tbody></table>`;
+    document.querySelectorAll('[data-i]').forEach(b => b.onclick = () => um(A[+b.dataset.i], b));
+    $('#tudo').onclick = () => tudo($('#tudo'));
+  }
+  async function um(a, b) {
+    b.disabled = true; aviso('');
+    try { const t = salvar(a.nome, new Blob([await bytes(a.caminho)], { type: 'application/pdf' })); if (t) aviso(t, true); sb.rpc('lote_baixou', { p_codigo: cod, p_caminho: a.caminho }).then(() => {}, () => {}); }
+    catch (e) { console.error(e); aviso('Não consegui baixar ' + (a.numero || 'o arquivo') + '. Tente de novo em alguns minutos.'); }
+    finally { b.disabled = false; }
+  }
+  async function tudo(b) {
+    const A = L.arquivos, files = [], falhas = [], t0 = b.textContent; b.disabled = true; aviso('');
+    try {
+      for (const [i, a] of A.entries()) {
+        b.textContent = `Baixando ${i + 1} de ${A.length}…`;
+        try { files.push([a.nome, await bytes(a.caminho)]); } catch (e) { console.error(e); falhas.push(a.numero || a.nome); }
+      }
+      let t = '';
+      if (files.length) {
+        t = salvar('Carta ' + (L.numero_carta || 'sem numero').replace(/[^\w-]+/g, '-') + ' - as built.zip', zip(files));
+        sb.rpc('lote_baixou', { p_codigo: cod, p_caminho: null, p_tudo: true }).then(() => {}, () => {});
+      }
+      if (falhas.length) aviso('Não consegui baixar: ' + falhas.join(', ') + '. ' + (files.length ? 'Os demais estão no ZIP. ' : '') + 'Tente de novo em alguns minutos.');
+      else aviso(t || files.length + ' PDF' + (files.length > 1 ? 's' : '') + ' no ZIP.', true);
+    } finally { b.disabled = false; b.textContent = t0; }
+  }
+
+  (async () => {
+    let r;
+    try { r = await sb.rpc('lote_abrir', { p_codigo: cod }); } catch (e) { r = { error: e }; }
+    if (r.error) { console.error(r.error); msg('Não consegui abrir', 'O servidor não respondeu. Tente de novo em alguns minutos.', true); return; }
+    L = r.data;
+    if (!L) { msg('Link não encontrado', 'Confira se o endereço foi copiado inteiro da carta.', true); return; }
+    if (!L.ativo) { msg('Link desligado', `O link ${L.numero_carta ? 'da carta ' + esc(L.numero_carta) : 'deste envio'} foi desligado${L.desligado_em ? ' em ' + dataBR(L.desligado_em) : ''}. Entre em contato com a Manaus Luz.`, true); return; }
+    document.title = 'Carta ' + (L.numero_carta || '') + ' · Projetos as built · Manaus Luz';
+    desenha();
+  })();
+})();
+</script>
+</body>
+</html>
