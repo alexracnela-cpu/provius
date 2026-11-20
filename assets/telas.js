@@ -56,7 +56,7 @@ async function pedidoAbrir() {
 }
 function pedidoNumero() {
   const ano = new Date().getFullYear(), n = t => (t ? t + '-' : '') + String((PED.prox[t] || 0) + 1).padStart(4, '0') + '/' + ano;
-  ['', 'C', 'R'].forEach(t => { const el = document.getElementById('px-' + t); if (el) el.textContent = 'próximo ' + n(t); });
+  ['', 'C', 'R', 'MP'].forEach(t => { const el = document.getElementById('px-' + t); if (el) el.textContent = 'próximo ' + n(t); });
   $('#num-prev').textContent = n($('input[name=tipo]:checked').value);
 }
 
@@ -176,7 +176,7 @@ async function projetosAbrir(idSel) {
   const ja = p.arquivos.filter(a => a.tipo === 'projeto' && new Date(a.em) >= new Date(p.etapa_desde)).slice(-1)[0];
   $('#j-arq-info').innerHTML = ja ? `✓ Já enviado: <button type="button" class="link-pdf" id="j-ver-proj">${esc(ja.nome)}</button> (${dataHora(ja.em)}). Escolha outro só se precisar mandar uma versão nova; o anterior fica no histórico.` : '';
   if (ja) $('#j-ver-proj').onclick = () => verArquivo(ja, 'Projeto ' + p.numero);
-  $('#j-ok').textContent = 'Entregar para Engenharia →';   // já executado ou não, o projeto sempre vai para a Engenharia
+  $('#j-ok').textContent = p.tipo === 'MP' ? 'Concluir (MP- só desenho) ✓' : 'Entregar para Engenharia →';   // já executado ou não, o projeto vai para a Engenharia; MP- termina no desenho (20/11/2026)
   await itensProjeto(p); if (seq !== PJ.seq) return;
   tcTela('j', p);   // depois dos itens: a tabela de carga decide se potências e modalidades aparecem
   mapaBloco('j', p);   // traçado no mapa (antes do modo: o botão também fica travado em só leitura)
@@ -222,7 +222,7 @@ async function projetosGravar(entregar) {
     await rpc('salvar', { p_id: p.id, p_campos: campos }); return { salvo: true };
   });
   if (!r) { if (arq) projetosAbrir(p.id); return; }
-  toast(r.salvo ? 'Alterações salvas' : p.numero + ' entregue para Engenharia');
+  toast(r.salvo ? 'Alterações salvas' : p.tipo === 'MP' ? p.numero + ' concluído (MP- só desenho: não vai à Execução nem à AGEMAN)' : p.numero + ' entregue para Engenharia');
   await recarregar(); projetosAbrir(r.salvo ? p.id : null);
 }
 

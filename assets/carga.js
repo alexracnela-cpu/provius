@@ -78,7 +78,7 @@ function tcFaltas(t) {
   return [...new Set(f)];
 }
 const tcTemLinhas = t => !!t && ((t.mod || []).some(r => tcQ(r.qn) || tcQ(r.qr)) || (t.exp || []).some(r => tcQ(r.qn)) || (t.dest || []).some(r => tcQ(r.qn)));
-const tcExige = p => !!p && ['', 'C'].includes(p.tipo || '') && new Date(p.criado_em) >= new Date(TC_DESDE);
+const tcExige = p => !!p && ['', 'C', 'MP'].includes(p.tipo || '') && new Date(p.criado_em) >= new Date(TC_DESDE);
 const tcLinhaMod = ult => ({ lg: ult?.lg || '', cl: ult?.cl || 'V5', pr: ult?.pr || 70, qr: '', pn: ult?.pn || 40, lm: ult?.lm || '', irc: ult?.irc || '>70', qn: '' });
 const tcLinhaExp = ult => ({ lg: ult?.lg || '', cl: ult?.cl || 'V5', pn: ult?.pn || 50, lm: ult?.lm || '', irc: ult?.irc || '>70', qn: '' });
 // só o que vai para o banco (sem linhas vazias)
