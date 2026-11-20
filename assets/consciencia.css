@@ -1,0 +1,68 @@
+/* PROVIUS · tema do Dia da Consciência Negra (liga só em 20/11; ver consciencia.js) */
+:root.consciencia{--cn-ouro:#f2b705;--cn-ouro2:#ffd45c;--cn-verm:#c1272d;--cn-verde:#1e7b3c;--cn-preto:#1b1410;--cn-terra:#b5562b;
+  --cn-kente:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='8' viewBox='0 0 64 8'%3E%3Crect width='64' height='8' fill='%231b1410'/%3E%3Crect x='0' width='12' height='8' fill='%23f2b705'/%3E%3Cpath d='M0 8 L3 3 L6 8 L9 3 L12 8' fill='%231b1410'/%3E%3Crect x='14' width='10' height='8' fill='%23c1272d'/%3E%3Crect x='17' y='3' width='4' height='2' fill='%23f2b705'/%3E%3Crect x='26' width='12' height='8' fill='%231e7b3c'/%3E%3Cpath d='M26 0 L29 5 L32 0 L35 5 L38 0' fill='%23f2b705'/%3E%3Crect x='40' width='10' height='8' fill='%23f2b705'/%3E%3Crect x='43' y='2' width='4' height='4' fill='%23c1272d' transform='rotate(45 45 4)'/%3E%3Crect x='52' width='10' height='8' fill='%23b5562b'/%3E%3Crect x='52' y='3' width='10' height='2' fill='%231b1410'/%3E%3C/svg%3E")}
+
+/* fundo: luz quente do pôr do sol vindo de baixo */
+.consciencia #fundo::after{content:"";position:absolute;inset:0;background:radial-gradient(90% 45% at 20% 112%,rgba(242,183,5,.18),transparent 60%),radial-gradient(70% 35% at 85% 110%,rgba(181,86,43,.16),transparent 60%)}
+
+/* grafismos flutuando: atrás do conteúdo, por cima da foto de fundo */
+#cn-grafismos{position:fixed;inset:0;z-index:-1;pointer-events:none;width:100%;height:100%}
+
+/* faixa de grafismos na borda do cabeçalho */
+#cn-faixa{position:absolute;left:0;right:0;bottom:-7px;height:7px;background:var(--cn-kente) repeat-x 0 0/64px 7px;pointer-events:none;z-index:1;box-shadow:0 2px 4px rgba(0,0,0,.18)}
+
+/* rodapé: baobás com o sol se pondo à esquerda, baobá e Sankofa à direita */
+#cn-chao{position:fixed;left:0;right:0;bottom:0;height:170px;z-index:-1;pointer-events:none}
+#cn-chao svg{position:absolute;bottom:0;overflow:visible}
+#cn-chao .esq{left:0;height:160px}
+#cn-chao .dir{right:1%;height:132px}
+#cn-chao .sol{transform-box:fill-box;transform-origin:center;animation:cn-pulsa 6s ease-in-out infinite}
+@keyframes cn-pulsa{0%,100%{transform:scale(1);opacity:.75}50%{transform:scale(1.06);opacity:.9}}
+@media (max-width:700px){#cn-chao{height:100px}#cn-chao .esq{height:92px}#cn-chao .dir{height:76px}}
+:root[data-theme="dark"] #cn-chao svg [fill="#1b1410"]{fill:#050302}
+
+/* Sankofa dourada no logo */
+.consciencia .marca{position:relative}
+.cn-sankofa{position:absolute;width:20px;left:-6px;top:-12px;pointer-events:none;z-index:2;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35));animation:cn-bate 2.4s ease-in-out infinite}
+.cn-sankofa svg{display:block;width:100%;height:auto}
+@keyframes cn-bate{0%,100%{transform:scale(1)}12%{transform:scale(1.14)}24%{transform:scale(1)}36%{transform:scale(1.1)}48%{transform:scale(1)}}
+
+/* avatar com anel dourado */
+.consciencia .avatar{box-shadow:0 0 0 2px var(--sup),0 0 0 4px var(--cn-ouro)}
+
+/* faixa de grafismos no alto de cada cartão das etapas */
+.consciencia .est{overflow:visible}
+.consciencia .est::after{content:"";position:absolute;left:-1px;right:-1px;top:-1px;height:5px;border-radius:8px 8px 0 0;background:var(--cn-kente) repeat-x 0 0/48px 5px;pointer-events:none}
+.consciencia .est .passo{margin-top:3px}
+
+/* caixa de entrada com a faixa de grafismos */
+.consciencia .acesso-cx{position:relative;background-image:var(--cn-kente);background-size:64px 8px;background-repeat:repeat-x;background-color:var(--sup);padding-top:32px;overflow:visible;border-color:rgba(242,183,5,.55)}
+.consciencia .acesso-cx .btn.pri{background:var(--cn-preto);border-color:var(--cn-ouro);color:var(--cn-ouro2)}
+.consciencia .acesso-cx .btn.pri:hover{background:#2d221b}
+
+/* mensagem na tela de entrada */
+.cn-msg{align-self:center;text-align:center;font:700 15px var(--f-corpo);color:#8f2a17;margin:-4px 0 2px}
+.cn-msg small{display:block;font-weight:500;font-size:12.5px;color:var(--suave);margin-top:2px}
+:root[data-theme="dark"] .cn-msg{color:var(--cn-ouro2)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .cn-msg{color:var(--cn-ouro2)}}
+
+/* linha no menu do usuário */
+.cn-conta{margin:2px 4px 4px;padding:6px 10px;border-radius:6px;font:600 13px var(--f-corpo);color:#7a5500;background:rgba(242,183,5,.15);border-left:4px solid var(--cn-verm)}
+:root[data-theme="dark"] .cn-conta{color:var(--cn-ouro2);background:rgba(255,212,92,.1)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .cn-conta{color:var(--cn-ouro2);background:rgba(255,212,92,.1)}}
+
+/* botão de ligar/desligar no menu do usuário */
+.menu-caixa .item#cn-tog{display:flex;justify-content:space-between;align-items:center;gap:14px;white-space:nowrap}
+#menu-eu .menu-caixa:has(#cn-tog){min-width:300px}
+.menu-caixa .item#cn-tog span{color:var(--suave);font-size:12.5px}
+
+/* personagens: pássaro Sankofa na entrada, sol espiando no "Aguardando você", baobá no 1º cartão */
+.cn-boneco{position:absolute;pointer-events:none;z-index:3;filter:drop-shadow(0 3px 4px rgba(0,0,0,.25))}
+.cn-boneco svg{display:block;width:100%;height:100%;overflow:visible}
+.consciencia .lado>.caixa{position:relative}
+.consciencia .lado>.caixa:has(>.cn-boneco){margin-top:58px}
+.cn-boneco-esteira{position:relative;height:0;margin-top:80px;z-index:2;--col:calc((100% - 40px) / 6)}
+@media (max-width:900px){.cn-boneco-esteira{--col:calc((100% - 16px) / 3)}}
+@media (max-width:520px){.cn-boneco-esteira{--col:calc((100% - 8px) / 2)}}
+
+@media (prefers-reduced-motion:reduce){.cn-sankofa,#cn-chao .sol{animation:none}}

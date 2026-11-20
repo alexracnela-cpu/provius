@@ -3,7 +3,7 @@
 (function () {
   const NATAL_ATE = '2026-12-25';
   const d = new Date(), hoje = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  if (hoje > NATAL_ATE) return;
+  if (hoje > NATAL_ATE || hoje.slice(5) === '11-20') return;   // 20/11: só o tema da Consciência Negra (consciencia.js)
 
   const raiz = document.documentElement, CHAVE = 'provius-natal';
   const parado = matchMedia('(prefers-reduced-motion: reduce)').matches;
