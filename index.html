@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap">
-<link rel="stylesheet" href="assets/estilo.css?v=21">
+<link rel="stylesheet" href="assets/estilo.css?v=22">
 <link rel="stylesheet" href="assets/natal.css?v=3">
 <link rel="stylesheet" href="assets/reveillon.css?v=1">
 <link rel="stylesheet" href="assets/consciencia.css?v=1">
@@ -493,6 +493,16 @@
   <span class="erro-msg" id="c-erro" hidden>Escolha o motivo e escreva a observação.</span></div>
   <div class="acoes"><button type="button" class="btn" data-fecha>Voltar</button><button type="button" class="btn canc-ok" id="c-ok">Cancelar processo</button></div></div></div>
 
+<div class="fundo" id="modal-tipo" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt-tit" style="width:min(640px,100%)"><h2 id="mt-tit">Mudar tipo</h2><div class="corpo">
+  <p class="ajuda" style="margin:0;font-size:14px">Tipo atual: <b id="mt-atual"></b>. Só o administrador muda o tipo.</p>
+  <div class="campo"><span class="r">Novo tipo <em>*</em></span><div class="tipos" id="mt-tipos"></div><span class="ajuda">O número novo é o próximo do tipo escolhido, no ano do processo.</span></div>
+  <div class="campo" id="mt-aq-c" hidden><span class="r">Aquisição <em>*</em></span><div class="seg"><label><input type="radio" name="mt-aq" value="sim">Adquirido</label><label><input type="radio" name="mt-aq" value="nao">Não adquirido</label></div></div>
+  <div class="campo" id="mt-serv-c" hidden><label class="r" for="mt-serv">Tipo de serviço <em>*</em></label><select id="mt-serv"><option value="">Selecione</option><option>CRESCIMENTO VEGETATIVO</option><option>MODERNIZAÇÃO</option><option>ILUMINAÇÃO DE DESTAQUE</option><option>DEMANDA REPRIMIDA</option><option>MANUTENÇÃO</option></select></div>
+  <ul class="mt-aviso" id="mt-aviso"></ul>
+  <div class="campo"><label class="r" for="mt-motivo">Motivo <em>*</em></label><textarea id="mt-motivo" placeholder="ex.: cadastrado como R- por engano, é um projeto comum"></textarea></div>
+  <span class="erro-msg" id="mt-erro" hidden></span></div>
+  <div class="acoes"><button type="button" class="btn" data-fecha>Voltar</button><button type="button" class="btn pri" id="mt-ok">Mudar tipo</button></div></div></div>
+
 <div class="fundo" id="modal-pdf" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mp-tit" style="width:min(1100px,100%)"><h2 id="mp-tit">PDF</h2>
   <div class="ed-barra"><span class="ajuda" id="mp-fonte"></span><span class="ed-ctl"><button type="button" class="btn peq" id="mp-menos">−</button><span class="ajuda" id="mp-z" style="min-width:42px;text-align:center">100%</span><button type="button" class="btn peq" id="mp-mais">+</button><span id="mp-pags" hidden><button type="button" class="btn peq" id="mp-pant">‹</button> <span id="mp-pinfo"></span> <button type="button" class="btn peq" id="mp-ppro">›</button></span><button type="button" class="btn peq" id="mp-baixar">⬇ Baixar</button><button type="button" class="btn peq pri" id="mp-print">🖨 Imprimir</button></span></div>
   <div class="ed-area" id="mp-area" style="max-height:70vh"><div class="ed-pag" style="cursor:default"><canvas id="mp-cv"></canvas></div></div>
@@ -549,7 +559,8 @@
 <script src="assets/historico.js?v=1"></script>
 <script src="assets/ageman.js?v=6"></script>
 <script src="assets/mapa.js?v=5"></script>
-<script src="assets/app.js?v=13"></script>
+<script src="assets/tipo.js?v=3"></script>
+<script src="assets/app.js?v=14"></script>
 <script src="assets/natal.js?v=6"></script>
 <script src="assets/reveillon.js?v=1"></script>
 <script src="assets/consciencia.js?v=1"></script>
