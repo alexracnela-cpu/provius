@@ -796,3 +796,8 @@ td input[type=number]{width:100px;text-align:right;font-family:var(--f-num)}
   /* no celular a barra rola de lado: o Mapa fica sempre visível na ponta direita */
   .aba.ico.aba-mapa{position:sticky;right:2px;z-index:2;box-shadow:-10px 0 10px -2px var(--sup,#fff),0 2px 8px color-mix(in srgb,var(--mapa-bt) 40%,transparent)}
 }
+/* mudar tipo (só o administrador) */
+.det-mapa{gap:8px}
+.mt-faixa{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.mt-faixa .btn{margin-left:auto}
+.mt-aviso{margin:0;padding:10px 14px 10px 30px;background:var(--sup2);border:1px solid var(--linha);border-radius:8px;font-size:13.5px;display:flex;flex-direction:column;gap:6px}
