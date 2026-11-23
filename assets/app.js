@@ -63,12 +63,15 @@ const TELA_HASH = () => { const h = location.hash.replace('#', ''); return TELAS
 const COLS = 'id,numero,tipo,ano,etapa,etapa_desde,cancelado,tipo_servico,ref_pedido,croqui_recebido,logradouro,bairro,zona,total_pontos,potencias,mod_cv,mod_mod,mod_dest,entregue_execucao,enviado_ageman,devolvido,criado_em';
 let SEM_URG = false;    // banco ainda sem a coluna urgente: o sistema funciona sem ela
 const COLS_TRAVA = ',editando_por,editando_nome,editando_desde,editando_em';
+let SEM_TIPO = false;   // banco ainda sem as colunas da mudança de tipo (provius-mudar-tipo.sql)
+const COLS_TIPO = ',numero_anterior,substituido_por';
 async function recarregar() {
   let todos = [], de = 0; const N = 1000;
   for (; ;) {
-    const { data, error } = await sb.from('processos').select(COLS + (SEM_URG ? '' : ',urgente') + (SEM_TRAVA ? '' : COLS_TRAVA)).order('id').range(de, de + N - 1);
+    const { data, error } = await sb.from('processos').select(COLS + (SEM_URG ? '' : ',urgente') + (SEM_TRAVA ? '' : COLS_TRAVA) + (SEM_TIPO ? '' : COLS_TIPO)).order('id').range(de, de + N - 1);
     if (error) { if (!SEM_URG && /urgente/.test(error.message || '')) { SEM_URG = true; todos = []; de = 0; continue; }
-      if (!SEM_TRAVA && /editando_/.test(error.message || '')) { SEM_TRAVA = true; todos = []; de = 0; continue; } toast(msgErro(error), true); break; }
+      if (!SEM_TRAVA && /editando_/.test(error.message || '')) { SEM_TRAVA = true; todos = []; de = 0; continue; }
+      if (!SEM_TIPO && /numero_anterior|substituido_por/.test(error.message || '')) { SEM_TIPO = true; todos = []; de = 0; continue; } toast(msgErro(error), true); break; }
     todos = todos.concat(data); if (data.length < N) break; de += N; }
   D = todos.map(normMP); cabFilas(); if (TELA === 'todos' && !$('#tela-todos').hidden) todosDesenha();
 }
@@ -137,7 +140,7 @@ function filtrados() {
   const q = $('#f-busca').value.trim().toUpperCase(), a = $('#f-ano').value, t = $('#f-tipo').value, et = $('#f-etapa').value, z = $('#f-zona').value;
   return D.filter(d => (a === '*' || d.ano === +a) && (t === '*' || (d.tipo || '') === t) && (z === '*' || d.zona === z) &&
     (et === '*' || (et === 'aberto' ? d.etapa < 6 && !d.cancelado : et === 'canc' ? d.cancelado : d.etapa === +et && !d.cancelado)) &&
-    (!q || d.numero.includes(q) || (d.logradouro || '').includes(q) || (d.bairro || '').includes(q))).sort(ordem());
+    (!q || d.numero.includes(q) || (d.numero_anterior || '').includes(q) || (d.logradouro || '').includes(q) || (d.bairro || '').includes(q))).sort(ordem());
 }
 const CURTO = ['Croqui', 'Projeto', 'Execução', 'Emplaquetamento', 'As built', 'AGEMAN'];
 function trilha(d) {
@@ -145,6 +148,7 @@ function trilha(d) {
   return `<div class="trilha">${CURTO.map((t, i) => { let c = 'pend'; if (d.etapa === 6) c = i === 5 ? 'fim' : 'feito'; else if (i < d.etapa) c = 'feito'; else if (i === d.etapa) c = 'agora'; return `<span class="tp ${c}" title="${t}"><i></i><em>${i === 5 && d.etapa === 6 ? (d.enviado_ageman ? 'Enviado' : 'Concluído') : t}</em></span>`; }).join('')}</div>`;
 }
 function frase(d) {
+  if (d.cancelado && d.substituido_por) return `<span class="quem">Cancelado</span><span>Mudou de tipo · virou <strong>${esc(tipoNumNovo(d))}</strong>.</span>`;
   if (d.cancelado) return '<span class="quem">Cancelado</span><span>Projeto cancelado.</span>';
   if (d.so_desenho) return '<span class="quem">Concluído</span><span>MP- só desenho (sem as built e sem AGEMAN).</span>';
   if (d.etapa === 6 && d.tipo === 'R' && !d.enviado_ageman) return '<span class="quem">Concluído</span><span>Concluído em Projetos (R- não adquirido, não vai à AGEMAN).</span>';
@@ -167,13 +171,13 @@ const ROT_ARQ = { pedido: 'Pedido', croqui: 'Croqui', projeto: 'Projeto', correc
 async function detalhe(id) {
   const p = await tarefa(() => carregarProcesso(id)); if (!p) return;
   $('#det-tit').textContent = p.numero + (p.cancelado ? ' · CANCELADO' : '');
-  const info = [...(p.tipo === 'R' ? [['Aquisição', p.adquirido === true ? 'Adquirido' : p.adquirido === false ? 'Não adquirido' : '—']] : []), ['Serviço', p.tipo_servico || '—'], ['Logradouro', p.logradouro], ['Bairro / zona', (p.bairro || '') + ' · ' + (p.zona || '')], ['Pontos', p.total_pontos], ['Encaminhamento', p.ref_pedido || '—'], ['Etapa', p.cancelado ? 'Cancelado' : p.so_desenho ? 'Concluído (MP- só desenho, sem as built)' : p.etapa === 6 ? (p.enviado_ageman ? 'Enviado à AGEMAN em ' + dataBR(p.enviado_ageman) : 'Concluído em Projetos') : ETAPAS[p.etapa].setor + ' · ' + ETAPAS[p.etapa].nome]].map(([k, v]) => `<div><span class="ajuda">${k}</span><br><b>${esc(v)}</b></div>`).join('');
+  const info = [...(p.tipo === 'R' ? [['Aquisição', p.adquirido === true ? 'Adquirido' : p.adquirido === false ? 'Não adquirido' : '—']] : []), ['Serviço', p.tipo_servico || '—'], ['Logradouro', p.logradouro], ['Bairro / zona', (p.bairro || '') + ' · ' + (p.zona || '')], ['Pontos', p.total_pontos], ...(p.numero_anterior ? [['Número anterior', p.numero_anterior]] : []), ['Encaminhamento', p.ref_pedido || '—'], ['Etapa', p.cancelado ? 'Cancelado' : p.so_desenho ? 'Concluído (MP- só desenho, sem as built)' : p.etapa === 6 ? (p.enviado_ageman ? 'Enviado à AGEMAN em ' + dataBR(p.enviado_ageman) : 'Concluído em Projetos') : ETAPAS[p.etapa].setor + ' · ' + ETAPAS[p.etapa].nome]].map(([k, v]) => `<div><span class="ajuda">${k}</span><br><b>${esc(v)}</b></div>`).join('');
   const passos = `<ol class="passos">${[1, 2, 3, 4, 5, 6].map(e => `<li class="${p.cancelado ? '' : e < p.etapa || (e === 6 && p.etapa === 6) ? 'feito' : e === p.etapa ? 'agora' : ''}"><span><b>${ETAPAS[e].setor} · ${ETAPAS[e].nome}</b><small>${e === p.etapa && e < 6 && !p.cancelado ? 'está aqui desde ' + dataBR(p.etapa_desde) : ''}</small></span></li>`).join('')}</ol>`;
   const arqs = p.arquivos.length ? `<div class="arq-lista" style="padding:0">${p.arquivos.map(a => `<button type="button" data-a="${a.id}"><b>${/\.pdf$/i.test(a.caminho) ? 'PDF' : 'FOTO'}</b>${esc(ROT_ARQ[a.tipo] || a.tipo)} · ${esc(a.nome || '')}<small>${esc(a.por_nome || '')} · ${quando(a.em)}</small></button>`).join('')}</div>` : '<p class="ajuda" style="margin:0">Sem arquivos (processo do histórico da planilha).</p>';
   const hist = p.movimentos.length ? `<ul class="hist" style="padding:0">${p.movimentos.map(m => `<li><span>${quando(m.em)}</span><b style="font-weight:500">${esc(m.por_nome || '')}: ${esc(textoMov(m))}</b></li>`).join('')}</ul>` : '<p class="ajuda" style="margin:0">Sem movimentos registrados (histórico da planilha).</p>';
   // observações escritas em cada etapa (visíveis para todos os setores)
   const obs = `<div class="det-sec det-obs"><h4>Observações</h4>${obsEtapasHtml(p) || '<p class="ajuda" style="margin:0">Nenhuma observação nas etapas.</p>'}</div>`;
-  $('#det-corpo').innerHTML = `<div class="resumo" style="padding:0">${info}</div>${p.cancelado ? `<p class="faixa-dev" style="margin:0"><b>CANCELADO</b> · ${esc(p.cancel_motivo || '')}${p.cancel_texto ? ': ' + esc(p.cancel_texto) : ''}</p>` : passos}${obs}<div class="det-sec det-arq"><h4>Arquivos</h4>${arqs}</div><div class="det-sec"><h4>Histórico</h4>${hist}</div>`;
+  $('#det-corpo').innerHTML = `<div class="resumo" style="padding:0">${info}</div>${p.cancelado && p.substituido_por ? tipoFaixa(p) : p.cancelado ? `<p class="faixa-dev" style="margin:0"><b>CANCELADO</b> · ${esc(p.cancel_motivo || '')}${p.cancel_texto ? ': ' + esc(p.cancel_texto) : ''}</p>` : passos}${obs}<div class="det-sec det-arq"><h4>Arquivos</h4>${arqs}</div><div class="det-sec"><h4>Histórico</h4>${hist}</div>`;
   $$('#det-corpo [data-a]').forEach(b => b.onclick = () => verArquivo(p.arquivos.find(a => String(a.id) === b.dataset.a), p.numero));
   // tabela de carga (gerada na hora, a partir do que está gravado)
   const tcs = [[p.tabela_carga, false, 'do projeto'], [p.tabela_carga_asb, true, 'do as built']].filter(x => tcTemLinhas(x[0]));
@@ -184,8 +188,9 @@ async function detalhe(id) {
     box.querySelectorAll('[data-tcd]').forEach(b => b.onclick = () => { const x = tcs[+b.dataset.tcd]; tcPdfAbrir(p, x[0], x[1], x[1] ? p.tabela_carga : null); });
   }
   const vm = document.createElement('div'); vm.className = 'det-mapa'; vm.innerHTML = '<button type="button" class="btn peq">🗺 Ver no mapa</button>'; vm.querySelector('button').onclick = () => mapaIrPara(p.id); $('#det-corpo').prepend(vm);   // traçado do projeto na aba Mapa
+  tipoDetalhe(p, vm);   // mudar o tipo (só o administrador) e link do número antigo para o novo
   const bt = $('#det-abrir'); const aba = !p.cancelado && p.etapa < 6 ? ETAPAS[p.etapa].aba : null;
-  if (p.cancelado && (EU.admin || EU.setor === 'Projetos')) { bt.hidden = false; bt.textContent = 'Reativar processo'; bt.onclick = async () => { const r = await tarefa(() => rpc('reativar', { p_id: p.id }).then(() => true), 'Processo reativado'); if (r) { fechaModal('#modal-det'); await recarregar(); } }; }
+  if (p.cancelado && !p.substituido_por && (EU.admin || EU.setor === 'Projetos')) { bt.hidden = false; bt.textContent = 'Reativar processo'; bt.onclick = async () => { const r = await tarefa(() => rpc('reativar', { p_id: p.id }).then(() => true), 'Processo reativado'); if (r) { fechaModal('#modal-det'); await recarregar(); } }; }
   else if (aba && pode(aba)) { bt.hidden = false; bt.textContent = 'Abrir na fila de ' + ETAPAS[p.etapa].setor + ' →'; bt.onclick = () => { fechaModal('#modal-det'); TELA = aba; abrirTela(aba); const f = { projetos: projetosAbrir, exe: execAbrir, cad: cadAbrir, asb: asbAbrir }[aba]; if (f && p.etapa < 5) f(p.id); }; }
   else bt.hidden = true;
   abreModal('#modal-det');
@@ -204,7 +209,7 @@ function relTodos() { const all = $$('#rl-setores input'); $('#rl-todos').checke
 function relSel() {
   const set = new Set($$('#rl-setores input:checked').map(i => i.value)), a = $('#rl-ano').value, usa = $('#rl-filtros').checked;
   const q = $('#f-busca').value.trim().toUpperCase(), t = $('#f-tipo').value, z = $('#f-zona').value;
-  return D.filter(d => set.has(grupo(d)) && (a === '*' || d.ano === +a) && (!usa || ((t === '*' || (d.tipo || '') === t) && (z === '*' || d.zona === z) && (!q || d.numero.includes(q) || (d.logradouro || '').includes(q) || (d.bairro || '').includes(q)))))
+  return D.filter(d => set.has(grupo(d)) && (a === '*' || d.ano === +a) && (!usa || ((t === '*' || (d.tipo || '') === t) && (z === '*' || d.zona === z) && (!q || d.numero.includes(q) || (d.numero_anterior || '').includes(q) || (d.logradouro || '').includes(q) || (d.bairro || '').includes(q)))))
     .sort((x, y) => ORDEM.indexOf(grupo(x)) - ORDEM.indexOf(grupo(y)) || x.etapa - y.etapa || y.ano - x.ano || y.numero.localeCompare(x.numero));
 }
 async function relGera() {
